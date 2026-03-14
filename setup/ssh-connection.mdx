@@ -1,0 +1,37 @@
+---
+title: SSH Connection Overview
+description: Setting up SSH connection to your Asterisk server
+---
+
+Before you can remotely manage your Asterisk server, you need to establish a reliable SSH connection. This section covers the essential steps to configure your server for SSH access.
+
+## Prerequisites
+
+- Debian-based Linux system installed
+- Root or sudo access to the server
+- Basic knowledge of Linux command line
+
+## Setup Process
+
+To establish a proper SSH connection to your Asterisk server, you'll need to:
+
+1. **Configure a static IP address** - This ensures your server always has the same IP address, making it easier to connect without having to look up the IP each time.
+
+2. **Install and configure OpenSSH** - The OpenSSH server allows secure remote access to your system.
+
+3. **Connect using an SSH client** - Use a client like MobaXterm to establish the connection.
+
+## Why Static IP?
+
+Assigning a static IP address to your network interface is convenient because you won't need to discover the assigned IP address every time you want to connect via SSH.
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Configure Static IP" icon="network-wired" href="/setup/static-ip">
+    Set up a static IP address for your server
+  </Card>
+  <Card title="Install OpenSSH" icon="key" href="/setup/openssh">
+    Install and configure the OpenSSH server
+  </Card>
+</CardGroup>

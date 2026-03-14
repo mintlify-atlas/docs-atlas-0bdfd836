@@ -1,0 +1,403 @@
+---
+title: "voicemail.conf Reference"
+description: "Complete reference for Asterisk voicemail configuration"
+---
+
+## Overview
+
+The `voicemail.conf` file configures the Asterisk voicemail system, including mailbox definitions, email settings, and voicemail options.
+
+## File Location
+
+```
+/etc/asterisk/voicemail.conf
+```
+
+## Configuration Structure
+
+- `[general]` - Global voicemail settings
+- `[zonemessages]` - Time zone configurations
+- `[context]` - Mailbox definitions organized by context
+
+## [general] Section
+
+### Audio Format Settings
+
+<ParamField path="format" type="string" default="wav">
+  Audio format(s) for voicemail messages. Multiple formats separated by `|`. Common formats: `wav`, `wav49`, `gsm`, `mp3`
+</ParamField>
+
+### Email Settings
+
+<ParamField path="serveremail" type="string" default="asterisk">
+  Email address to use in the From field of voicemail notifications
+</ParamField>
+
+<ParamField path="attach" type="boolean" default="yes">
+  Attach voicemail audio file to email notifications
+</ParamField>
+
+<ParamField path="emaildateformat" type="string">
+  Date format for email notifications. Uses strftime format (e.g., `%A, %B %d, %Y at %r`)
+</ParamField>
+
+<ParamField path="pagerdateformat" type="string">
+  Date format for pager notifications
+</ParamField>
+
+### Playback Settings
+
+<ParamField path="skipms" type="integer" default="3000">
+  Milliseconds to skip forward/backward when reviewing messages (default: 3000ms = 3 seconds)
+</ParamField>
+
+<ParamField path="maxsilence" type="integer" default="10">
+  Maximum seconds of silence before ending message recording
+</ParamField>
+
+<ParamField path="silencethreshold" type="integer" default="128">
+  Silence detection threshold (lower = more sensitive)
+</ParamField>
+
+### Security Settings
+
+<ParamField path="maxlogins" type="integer" default="3">
+  Maximum failed login attempts before disconnection
+</ParamField>
+
+<ParamField path="minpassword" type="integer">
+  Minimum password length for mailbox PINs
+</ParamField>
+
+### Feature Settings
+
+<ParamField path="sendvoicemail" type="boolean" default="no">
+  Allow users to compose and send voicemail to other users from within voicemail menu
+</ParamField>
+
+<ParamField path="envelope" type="boolean" default="yes">
+  Play message envelope (date/time) before playing message
+</ParamField>
+
+<ParamField path="saycid" type="boolean" default="no">
+  Say caller ID before playing message
+</ParamField>
+
+<ParamField path="sayduration" type="boolean" default="yes">
+  Announce message duration
+</ParamField>
+
+<ParamField path="review" type="boolean" default="no">
+  Allow caller to review message before saving
+</ParamField>
+
+<ParamField path="operator" type="boolean" default="no">
+  Allow caller to press 0 to reach operator during greeting
+</ParamField>
+
+### Storage Settings
+
+<ParamField path="maxmsg" type="integer" default="100">
+  Maximum messages per folder
+</ParamField>
+
+<ParamField path="maxsecs" type="integer" default="0">
+  Maximum message length in seconds (0 = unlimited)
+</ParamField>
+
+<ParamField path="minsecs" type="integer" default="0">
+  Minimum message length in seconds
+</ParamField>
+
+<ParamField path="maxgreet" type="integer" default="60">
+  Maximum greeting length in seconds
+</ParamField>
+
+## [zonemessages] Section
+
+Define time zones for message timestamp announcements:
+
+```ini
+[zonemessages]
+eastern=America/New_York|'vm-received' Q 'digits/at' IMp
+central=America/Chicago|'vm-received' Q 'digits/at' IMp
+european=Europe/Copenhagen|'vm-received' a d b 'digits/at' HM
+military=Zulu|'vm-received' q 'digits/at' H N 'hours' 'phonetic/z_p'
+```
+
+Format: `zonename=timezone|message_format`
+
+## Mailbox Definitions
+
+### Basic Syntax
+
+```ini
+[context]
+mailbox => pin,name,email,pager_email,options
+```
+
+### Minimal Syntax
+
+```ini
+[default]
+1000 => 1234,John Doe
+1001 => 5678,Jane Smith
+```
+
+### Full Syntax
+
+```ini
+[default]
+4000 => 1234,Javier,javier@ejemplo.com,,attach=yes|saycid=yes|tz=central
+4001 => 1234,Belen,belen@ejemplo.com,,attach=yes|delete=yes
+```
+
+### Mailbox Parameters
+
+<ParamField path="mailbox" type="string" required>
+  Mailbox number (matches extension number)
+</ParamField>
+
+<ParamField path="pin" type="string" required>
+  Numeric PIN for accessing voicemail
+</ParamField>
+
+<ParamField path="name" type="string" required>
+  Full name of mailbox owner
+</ParamField>
+
+<ParamField path="email" type="string">
+  Email address for voicemail notifications
+</ParamField>
+
+<ParamField path="pager_email" type="string">
+  Email address for pager/SMS notifications (typically shorter messages)
+</ParamField>
+
+<ParamField path="options" type="string">
+  Pipe-separated options (e.g., `attach=yes|delete=yes|tz=eastern`)
+</ParamField>
+
+### Per-Mailbox Options
+
+| Option | Description | Example |
+|--------|-------------|----------|
+| `attach=yes/no` | Attach audio to email | `attach=yes` |
+| `delete=yes/no` | Delete voicemail after emailing | `delete=yes` |
+| `tz=timezone` | Time zone from [zonemessages] | `tz=central` |
+| `saycid=yes/no` | Announce caller ID | `saycid=yes` |
+| `envelope=yes/no` | Play envelope info | `envelope=yes` |
+| `callback=extension` | Extension for callback | `callback=100` |
+
+## Context Organization
+
+Organize mailboxes by context (matching dialplan contexts):
+
+```ini
+[default]
+4000 => 1234,Javier,javier@ejemplo.com
+4001 => 1234,Belen,belen@ejemplo.com
+
+[employees]
+5000 => 9999,Director,director@company.com
+5001 => 8888,Manager,manager@company.com
+
+[customers]
+6000 => 1111,Customer Service,cs@company.com
+```
+
+## Integration with extensions.conf
+
+### Voicemail Deposit
+
+Send caller to voicemail:
+
+```ini
+[empleado]
+; Ring phone, then go to voicemail
+exten => 4000,1,Dial(SIP/javier,15)
+exten => 4000,n,VoiceMail(4000)
+exten => 4000,n,Hangup()
+
+; Direct to voicemail with unavailable greeting
+exten => 4000,1,VoiceMail(4000,u)
+
+; Direct to voicemail with busy greeting
+exten => 4000,1,VoiceMail(4000,b)
+
+; Use mailbox from different context
+exten => 5000,1,VoiceMail(5000@employees)
+```
+
+### Voicemail Retrieval
+
+Access voicemail:
+
+```ini
+[empleado]
+; Access own mailbox (prompted for mailbox and PIN)
+exten => *97,1,VoiceMailMain()
+
+; Access specific mailbox (still needs PIN)
+exten => *4000,1,VoiceMailMain(4000)
+exten => *4001,1,VoiceMailMain(4001)
+
+; Access mailbox in different context
+exten => *5000,1,VoiceMailMain(5000@employees)
+```
+
+### Voicemail in Standard Extension
+
+```ini
+[empleado]
+exten => 4000,1,NoOp(Calling Javier)
+same => n,Dial(SIP/javier,15)
+same => n,VoiceMail(${EXTEN})
+same => n,Hangup()
+```
+
+### Checking Voicemail Status
+
+Use `VMCOUNT()` function:
+
+```ini
+exten => 4000,1,NoOp(Messages: ${VMCOUNT(4000)})
+exten => 4000,n,GotoIf($[${VMCOUNT(4000)} > 0]?hasmsg:nomsg)
+exten => 4000,n(hasmsg),Playback(you-have-messages)
+exten => 4000,n(nomsg),NoOp(No messages)
+```
+
+## Example Configurations
+
+### Basic Configuration
+
+```ini
+[general]
+format=wav49|gsm|wav
+serveremail=asterisk
+attach=yes
+skipms=3000
+maxsilence=10
+silencethreshold=128
+maxlogins=3
+emaildateformat=%A, %B %d, %Y at %r
+sendvoicemail=yes
+
+[zonemessages]
+eastern=America/New_York|'vm-received' Q 'digits/at' IMp
+central=America/Chicago|'vm-received' Q 'digits/at' IMp
+
+[default]
+4000 => 1234,Javier,javier@ejemplo.com
+4001 => 1234,Belen,belen@ejemplo.com
+```
+
+### With Email Notifications
+
+```ini
+[general]
+format=wav
+serveremail=pbx@company.com
+attach=yes
+emaildateformat=%A, %B %d, %Y at %r
+pagerdateformat=%A, %B %d, %Y at %r
+
+[default]
+4000 => 1234,Javier,javier@ejemplo.com,,attach=yes|delete=no
+4001 => 1234,Belen,belen@ejemplo.com,,attach=yes|delete=yes
+```
+
+### Multiple Contexts
+
+```ini
+[general]
+format=wav49|gsm|wav
+serveremail=asterisk
+attach=yes
+
+[employees]
+4000 => 1234,Javier,javier@company.com
+4001 => 1234,Belen,belen@company.com
+
+[management]
+5000 => 9999,Director,director@company.com
+
+[support]
+6000 => 1111,Support,support@company.com
+```
+
+### With Time Zones
+
+```ini
+[general]
+format=wav
+serveremail=asterisk
+attach=yes
+
+[zonemessages]
+eastern=America/New_York|'vm-received' Q 'digits/at' IMp
+central=America/Chicago|'vm-received' Q 'digits/at' IMp
+pacific=America/Los_Angeles|'vm-received' Q 'digits/at' IMp
+
+[default]
+4000 => 1234,NY User,nyuser@company.com,,tz=eastern
+4001 => 1234,Chicago User,chiuser@company.com,,tz=central
+4002 => 1234,LA User,lauser@company.com,,tz=pacific
+```
+
+## Voicemail Management
+
+### Voicemail Menu Options
+
+When accessing voicemail via VoiceMailMain():
+
+- **Listen to messages** - Press 1
+- **Change folders** - Press 2
+- **Advanced options** - Press 3
+  - Record greeting - Press 1
+  - Record name - Press 2
+  - Change password - Press 3
+- **Exit** - Press #
+
+### Message Playback Controls
+
+While listening to messages:
+
+- **Replay** - Press 5
+- **Next message** - Press 6
+- **Delete** - Press 7
+- **Forward** - Press 8
+- **Save** - Press 9
+
+## Storage Locations
+
+Voicemail files are stored in:
+
+```
+/var/spool/asterisk/voicemail/[context]/[mailbox]/
+```
+
+Folders:
+- `INBOX/` - New messages
+- `Old/` - Saved messages
+- `Work/`, `Family/`, `Friends/` - Custom folders
+- `tmp/` - Temporary recordings
+
+## Applying Changes
+
+After modifying `voicemail.conf`, reload voicemail:
+
+```bash
+asterisk -rx "voicemail reload"
+```
+
+Or from the Asterisk CLI:
+
+```
+asterisk> voicemail reload
+```
+
+## See Also
+
+- [extensions.conf](/config/extensions-conf) - Dialplan configuration
+- [sip.conf](/config/sip-conf) - SIP channel configuration

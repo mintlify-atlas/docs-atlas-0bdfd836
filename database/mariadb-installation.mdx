@@ -1,0 +1,163 @@
+---
+title: Installing MariaDB
+description: Step-by-step guide to installing and configuring MariaDB for Asterisk integration
+---
+
+MariaDB is a popular open-source relational database that provides flexibility for Asterisk PBX configurations. This guide covers the installation and initial setup of MariaDB.
+
+## Prerequisites
+
+Before installing MariaDB, ensure your system is up to date:
+
+```bash
+sudo apt update
+sudo apt upgrade
+```
+
+## Installing MariaDB Server
+
+<Steps>
+  <Step title="Download the MySQL APT Configuration Package">
+    Download the MySQL repository configuration package:
+
+    ```bash
+    cd /home/user/downloads/
+    wget http://repo.mysql.com/mysql-apt-config_0.8.14-1_all.deb
+    ```
+  </Step>
+
+  <Step title="Install the Package">
+    Install the downloaded package:
+
+    ```bash
+    sudo dpkg -i mysql-apt-config_0.8.14-1_all.deb
+    ```
+
+    <Warning>
+      During installation, ensure that **MySQL Tools & Connectors** is enabled. This is necessary for ODBC support, which Asterisk will use later.
+    </Warning>
+  </Step>
+
+  <Step title="Verify Installation">
+    Access the database to confirm successful installation:
+
+    ```bash
+    sudo mysql -u root
+    ```
+
+    You should see the MariaDB prompt.
+  </Step>
+</Steps>
+
+## Securing MariaDB
+
+By default, the root user can access MariaDB without a password. This poses a security risk.
+
+### Setting Root Password
+
+<Steps>
+  <Step title="Update Root Password">
+    From within the MariaDB console:
+
+    ```sql
+    MariaDB> UPDATE mysql.user SET PASSWORD=PASSWORD('root') WHERE USER='root';
+    MariaDB> flush privileges;
+    ```
+
+    <Warning>
+      Replace `'root'` with a strong password in production environments. The example uses 'root' for demonstration only.
+    </Warning>
+  </Step>
+
+  <Step title="Disable Plugin Authentication">
+    Force password authentication for the root user:
+
+    ```sql
+    MariaDB> UPDATE mysql.user SET plugin = '' WHERE user = 'root';
+    MariaDB> quit;
+    ```
+  </Step>
+
+  <Step title="Restart MySQL Service">
+    Apply the changes by restarting the service:
+
+    ```bash
+    sudo systemctl restart mysql
+    ```
+  </Step>
+</Steps>
+
+## Creating Database and User for Asterisk
+
+### Create Asterisk User
+
+Create a dedicated user for Asterisk to access the database:
+
+```sql
+MariaDB> use mysql;
+MariaDB> CREATE USER 'asterisk'@'localhost' IDENTIFIED BY 'asterisk';
+MariaDB> select user, host from user;
+```
+
+Verify the user was created and test access:
+
+```bash
+sudo mysql -u asterisk -p
+```
+
+### Create Asterisk Database
+
+<Steps>
+  <Step title="Create the Database">
+    ```sql
+    MariaDB> CREATE DATABASE asteriskdb;
+    MariaDB> show databases;
+    ```
+  </Step>
+
+  <Step title="Create Tables">
+    Create a sample table for storing user information:
+
+    ```sql
+    MariaDB> use asteriskdb;
+    MariaDB> CREATE TABLE usuarios(nombre VARCHAR(15), extension INTEGER);
+    MariaDB> show tables;
+    ```
+  </Step>
+
+  <Step title="Insert Sample Data">
+    Add some test users:
+
+    ```sql
+    MariaDB> insert into usuarios values("javier", 4000);
+    MariaDB> insert into usuarios values("belen", 4001);
+    MariaDB> insert into usuarios values("direccion", 5000);
+    MariaDB> select * from usuarios;
+    ```
+  </Step>
+</Steps>
+
+## Granting Privileges
+
+Grant the Asterisk user access to the database:
+
+```sql
+MariaDB> GRANT SELECT, INSERT, UPDATE, DELETE ON asteriskdb.* TO 'asterisk'@'localhost';
+```
+
+This grants the `asterisk` user:
+- **SELECT**: Read data from tables
+- **INSERT**: Add new records
+- **UPDATE**: Modify existing records
+- **DELETE**: Remove records
+
+<Warning>
+In production environments, follow the principle of least privilege. Only grant the permissions that Asterisk actually needs.
+</Warning>
+
+## Next Steps
+
+With MariaDB installed and configured, you're ready to:
+- [Set up the ODBC connector](/database/odbc-connector)
+- [Connect Asterisk to MariaDB](/database/asterisk-connection)
+- [Test the database integration](/database/testing-connection)

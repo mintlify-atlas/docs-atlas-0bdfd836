@@ -1,0 +1,160 @@
+---
+title: 'Installing Dependencies'
+description: 'Install required dependencies and download Asterisk 15.7.1 source code'
+---
+
+## System Updates
+
+Before installing Asterisk, ensure your system is up to date:
+
+```bash
+sudo apt update && sudo apt upgrade
+```
+
+This updates your package list and upgrades installed packages to their latest versions.
+
+## Install Required Packages
+
+Install essential build tools and utilities:
+
+```bash
+sudo apt install wget build-essential subversion
+```
+
+These packages provide:
+- **wget** - Tool for downloading files from the web
+- **build-essential** - Compilation tools (gcc, make, etc.)
+- **subversion** - Version control system used by some Asterisk scripts
+
+## Download Asterisk
+
+<Steps>
+  <Step title="Navigate to source directory">
+    ```bash
+    cd /usr/src/
+    ```
+  </Step>
+  
+  <Step title="Download Asterisk 15.7.1">
+    ```bash
+    sudo wget http://downloads.asterisk.org/pub/telephony/asterisk/releases/asterisk-15.7.1.tar.gz
+    ```
+  </Step>
+  
+  <Step title="Extract the archive">
+    ```bash
+    sudo tar zxf asterisk-15.7.1.tar.gz
+    ```
+  </Step>
+</Steps>
+
+## Install Asterisk Dependencies
+
+Navigate to the Asterisk source directory:
+
+```bash
+cd asterisk-15.7.1/
+```
+
+### MP3 Source Support
+
+Enable MP3 format support:
+
+```bash
+sudo contrib/scripts/get_mp3_source.sh
+```
+
+### Install Prerequisites
+
+Run the prerequisite installation script:
+
+```bash
+sudo contrib/scripts/install_prereq install
+```
+
+This script automatically installs all required libraries and dependencies for Asterisk.
+
+## Configure and Compile
+
+<Steps>
+  <Step title="Prepare the build">
+    ```bash
+    sudo ./configure
+    ```
+    
+    This script checks your system and prepares the build environment. Upon successful completion, you'll see a configuration summary.
+  </Step>
+  
+  <Step title="Select modules">
+    ```bash
+    sudo make menuselect
+    ```
+    
+    This opens an interactive menu where you can select which Asterisk modules to compile. Use arrow keys to navigate and Enter to select/deselect modules.
+  </Step>
+  
+  <Step title="Compile Asterisk">
+    ```bash
+    sudo make -j2
+    ```
+    
+    The `-j2` flag enables parallel compilation using 2 CPU cores, speeding up the build process.
+  </Step>
+  
+  <Step title="Install Asterisk">
+    ```bash
+    sudo make install
+    ```
+    
+    This installs Asterisk binaries to system directories.
+  </Step>
+</Steps>
+
+## Optional Components
+
+### Documentation
+
+Install developer documentation:
+
+```bash
+sudo make progdocs
+```
+
+### Sample Configuration Files
+
+Install sample configuration files:
+
+```bash
+sudo make samples
+```
+
+<Warning>
+  Only run `make samples` on a fresh installation. This command will overwrite existing configuration files.
+</Warning>
+
+### Init Scripts and Libraries
+
+Install startup scripts:
+
+```bash
+sudo make config
+```
+
+Update shared library cache:
+
+```bash
+sudo ldconfig
+```
+
+## Verification
+
+At this point, Asterisk is compiled and installed, but not yet configured or running. The next step is to [create an Asterisk user](/installation/user-creation) for secure operation.
+
+## Troubleshooting
+
+If you encounter compilation errors:
+
+- Ensure all dependencies are installed
+- Check that you have sufficient disk space
+- Verify you're using a supported Linux distribution
+- Review error messages in the terminal output

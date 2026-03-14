@@ -1,0 +1,165 @@
+---
+title: Business Hours Management
+description: Route calls based on time schedules and business hours
+---
+
+Implement time-based call routing to provide different responses during business hours versus after-hours periods.
+
+## Overview
+
+Most businesses don't operate 24/7. Configure Asterisk to check the current time and route calls accordingly, providing appropriate messages when calling outside business hours.
+
+## GotoIfTime Function
+
+The `GotoIfTime()` function enables conditional routing based on time criteria:
+
+```
+GotoIfTime(<time_range>,<days_of_week>,<days_of_month>,<months>?[if_true][:if_false])
+```
+
+**Parameters:**
+- `time_range`: Hours in 24-hour format (e.g., `8:00-20:00`)
+- `days_of_week`: Days (e.g., `mon-fri`, `mon,wed,fri`)
+- `days_of_month`: Day numbers (e.g., `1-15`, `*` for all)
+- `months`: Month names or `*` for all months
+- `if_true`: Destination if time matches
+- `if_false`: Optional destination if time doesn't match
+
+## Configuration
+
+Edit the extensions configuration:
+
+```bash
+sudo vim /etc/asterisk/extensions.conf
+```
+
+Under the `[entrantes]` context, add time-based routing:
+
+```ini
+;----redireccion a la extension marcada
+;----con horario establecido L-V de 8 a 20h
+exten => _995554XXX,1,Set(extension=${EXTEN:5})
+same => n,NoOp(Llamando a la extension ${extension})
+same => n,GotoIfTime(8:00-20:00,mon-fri,*,*?empleado,${extension},1)
+same => n,Festival(En estos momentos no hay nadie que te pueda atender)
+same => n,Festival(Nuestro horario es de 8 a 20 horas de lunes a viernes)
+same => n,Hangup()
+```
+
+**How it works:**
+
+1. Extract the extension from the dialed number
+2. Check if current time is Monday-Friday, 8:00-20:00
+3. If **within hours**: Route to employee extension
+4. If **after hours**: Play message with business hours information
+
+### Apply Configuration
+
+Reload the dialplan:
+
+```
+CLI> dialplan reload
+```
+
+## Time Configuration Examples
+
+<CodeGroup>
+```ini Standard Business Hours
+; Monday-Friday, 9 AM to 5 PM
+GotoIfTime(9:00-17:00,mon-fri,*,*?context,extension,1)
+```
+
+```ini Extended Hours
+; Monday-Friday 8-8, Saturday 9-1
+exten => s,1,GotoIfTime(8:00-20:00,mon-fri,*,*?open,s,1)
+same => n,GotoIfTime(9:00-13:00,sat,*,*?open,s,1)
+same => n,Goto(closed,s,1)
+```
+
+```ini Lunch Break
+; Skip lunch hour (1-2 PM)
+exten => s,1,GotoIfTime(13:00-14:00,mon-fri,*,*?lunch,s,1)
+same => n,Goto(available,s,1)
+```
+
+```ini Holiday Exclusion
+; Close on December 25th
+exten => s,1,GotoIfTime(*,*,25,dec?closed,s,1)
+same => n,Goto(business_hours,s,1)
+```
+</CodeGroup>
+
+## Testing
+
+### During Business Hours
+
+Call **995554001** between 8:00-20:00 on a weekday:
+- System routes directly to extension 4001
+- Call connects normally
+
+### After Business Hours
+
+Call **995554001** outside 8:00-20:00 or on weekends:
+- System plays the after-hours message
+- Call terminates after the announcement
+
+## Day and Month Values
+
+**Days of the week:**
+- `mon`, `tue`, `wed`, `thu`, `fri`, `sat`, `sun`
+- Ranges: `mon-fri`
+- Multiple: `mon,wed,fri`
+- All days: `*`
+
+**Months:**
+- `jan`, `feb`, `mar`, `apr`, `may`, `jun`, `jul`, `aug`, `sep`, `oct`, `nov`, `dec`
+- Ranges: `jan-mar`
+- Multiple: `jan,jul`
+- All months: `*`
+
+**Days of month:**
+- Specific: `1`, `15`, `25`
+- Ranges: `1-15`
+- All days: `*`
+
+## Advanced Example: Multiple Time Periods
+
+```ini
+[entrantes]
+exten => _995554XXX,1,Set(extension=${EXTEN:5})
+same => n,NoOp(Checking business hours for ${extension})
+
+; Morning shift (8-12)
+same => n,GotoIfTime(8:00-12:00,mon-fri,*,*?morning_shift,${extension},1)
+
+; Afternoon shift (14-18)
+same => n,GotoIfTime(14:00-18:00,mon-fri,*,*?afternoon_shift,${extension},1)
+
+; Lunch break
+same => n,GotoIfTime(12:00-14:00,mon-fri,*,*?lunch_message,s,1)
+
+; After hours
+same => n,Goto(after_hours,s,1)
+
+[morning_shift]
+exten => _4XXX,1,NoOp(Morning shift - ${EXTEN})
+same => n,Goto(empleado,${EXTEN},1)
+
+[afternoon_shift]
+exten => _4XXX,1,NoOp(Afternoon shift - ${EXTEN})
+same => n,Goto(empleado,${EXTEN},1)
+
+[lunch_message]
+exten => s,1,Answer()
+same => n,Playback(custom/lunch-break)
+same => n,Hangup()
+
+[after_hours]
+exten => s,1,Answer()
+same => n,Playback(custom/after-hours)
+same => n,Hangup()
+```
+
+<Note>
+Time-based routing uses the server's system time. Ensure your Asterisk server is configured with the correct timezone and NTP synchronization.
+</Note>

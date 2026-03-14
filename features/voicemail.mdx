@@ -1,0 +1,147 @@
+---
+title: 'Voicemail Configuration'
+description: 'Configure voicemail boxes for Asterisk extensions with email notifications and pin-protected access'
+---
+
+## Overview
+
+Voicemail allows callers to leave messages when an extension doesn't answer. Asterisk stores messages in multiple audio formats and can send email notifications when new messages arrive.
+
+## Configuration Steps
+
+### 1. Configure voicemail.conf
+
+Edit the voicemail configuration file:
+
+```bash
+sudo vim /etc/asterisk/voicemail.conf
+```
+
+Add mailboxes under the `[default]` context. Each line follows this format:
+
+```
+mailbox_number => pin,name,email
+```
+
+**Example configuration:**
+
+```ini
+[default]
+4000 => 1234,Javier,javier@ejemplo.com
+4001 => 1234,Belen,belen@ejemplo.com
+```
+
+**Parameters explained:**
+- **4000**: Mailbox number (typically matches extension number)
+- **1234**: PIN required to access the mailbox
+- **Javier**: Name of the mailbox owner
+- **javier@ejemplo.com**: Email address for message notifications
+
+<Note>
+The mailbox number doesn't have to match the extension number, but using the same number makes it easier to remember.
+</Note>
+
+### 2. Reload Voicemail Configuration
+
+Access the Asterisk CLI and reload:
+
+```
+CLI> voicemail reload
+```
+
+You can verify the configuration with:
+
+```
+CLI> voicemail show users
+```
+
+### 3. Modify extensions.conf
+
+Edit the dialplan to add voicemail functionality:
+
+```bash
+sudo vim /etc/asterisk/extensions.conf
+```
+
+**Add voicemail to extensions:**
+
+```ini
+[empleado]
+exten => 4000,1,NoOp(Llamando a Javier)
+same => n,Dial(SIP/javier,15)
+same => n,VoiceMail(${EXTEN})
+same => n,Hangup()
+
+exten => 4001,1,NoOp(Llamando a Belen)
+same => n,Dial(SIP/belen,15)
+same => n,VoiceMail(${EXTEN})
+same => n,Hangup()
+```
+
+**Add voicemail retrieval extensions:**
+
+```ini
+exten => *4000,1,VoiceMailMain(4000)
+same => n,Hangup()
+
+exten => *4001,1,VoiceMailMain(4001)
+same => n,Hangup()
+```
+
+### How It Works
+
+**Dial timeout:**
+The number `15` in the `Dial()` function specifies the ring timeout in seconds. After 15 seconds without answer, the call proceeds to `VoiceMail()`.
+
+**Message retrieval:**
+Users dial their extension prefixed with `*` (e.g., `*4000`) to access their voicemail. They'll be prompted to enter their PIN.
+
+## Testing with Softphones
+
+### Leaving a Message
+
+1. Call an extension from one softphone (e.g., Javier calls Belen at 4001)
+2. Don't answer the call
+3. After 15 seconds, the voicemail greeting plays
+4. Leave a message after the tone
+5. Hang up
+
+### Checking Messages
+
+1. From the softphone, dial `*4001` (or your mailbox number with `*` prefix)
+2. Enter PIN when prompted (e.g., `1234`)
+3. Follow voice prompts to listen to messages
+
+### Message Storage
+
+Messages are stored in multiple formats at:
+
+```bash
+/var/spool/asterisk/voicemail/default/4001/INBOX
+```
+
+You can verify message files with:
+
+```bash
+ls -l /var/spool/asterisk/voicemail/default/4001/INBOX
+```
+
+Each message is saved in three codecs:
+- **wav49**: Compressed WAV format
+- **gsm**: GSM codec format  
+- **wav**: Standard WAV format
+
+<Tip>
+The folder structure uses the context name (`default`) and mailbox number (`4001`) to organize messages.
+</Tip>
+
+## Asterisk Console Trace
+
+When testing, you can observe the complete call flow in the Asterisk console, including:
+- Call initiation
+- Ring timeout
+- Voicemail prompt playback
+- Message recording
+- Message retrieval and PIN validation
+
+This trace is valuable for debugging voicemail configuration issues.

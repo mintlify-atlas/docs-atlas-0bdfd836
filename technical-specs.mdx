@@ -1,0 +1,147 @@
+---
+title: Technical Specifications
+description: System requirements and environment setup for Asterisk tutorial
+---
+
+## Overview
+
+This tutorial uses a specific environment configuration to ensure consistency and compatibility. Below are the detailed technical specifications for the setup.
+
+## Operating System
+
+### Debian 9.11 (Stretch)
+
+<Info>
+**System Details:**
+- Distribution: [Debian 9.11](https://www.debian.org/releases/stretch/debian-installer/)
+- Shell: GNU bash, version 4.4.12(1)-release
+- Architecture: x86_64-pc-linux-gnu
+- Interface: No graphical interface (headless)
+</Info>
+
+Debian 9.11 provides a stable foundation for running Asterisk in production or testing environments.
+
+## Asterisk Version
+
+### Asterisk 15.17.1
+
+The tutorial uses [Asterisk 15.17.1](http://downloads.asterisk.org/pub/telephony/asterisk/releases/), which provides:
+
+- Stable PBX functionality
+- Wide community support
+- Compatibility with modern SIP clients
+- Advanced features for call management
+
+<Note>
+While newer versions of Asterisk are available, version 15.17.1 is used in this tutorial for its stability and well-documented features.
+</Note>
+
+## Virtualization Environment
+
+### VMware Workstation Setup
+
+**Hypervisor Details:**
+- Platform: VMware® Workstation 14 Player
+- Version: 14.1.8 build-14921873
+- Network Mode: **Bridged**
+
+<Info>
+**Bridged Network Mode** allows the virtual machine to appear as a separate device on your physical network, making it accessible from other machines for testing SIP clients and remote connections.
+</Info>
+
+### Network Configuration
+
+The virtual machine is configured with:
+- **Network adapter**: Bridged mode
+- **Static IP**: Recommended for consistent SSH access
+- **DNS servers**: Google (8.8.8.8) and Cloudflare (1.1.1.1)
+
+## Sudo Installation and Setup
+
+To facilitate easier system administration (similar to Ubuntu), the `sudo` program is installed on the Debian system.
+
+<Steps>
+  <Step title="Switch to root user">
+    ```bash
+    $ su
+    ```
+  </Step>
+  
+  <Step title="Install sudo package">
+    ```bash
+    $ apt-get install sudo
+    ```
+  </Step>
+  
+  <Step title="Add user to sudo group">
+    ```bash
+    $ adduser username sudo
+    ```
+    Replace `username` with your actual username.
+  </Step>
+</Steps>
+
+<Note>
+After adding your user to the sudo group, you may need to log out and log back in for the changes to take effect.
+</Note>
+
+## System Requirements
+
+### Minimum Requirements
+
+For running this Asterisk configuration, ensure your system meets:
+
+- **CPU**: x86_64 compatible processor
+- **RAM**: Minimum 512 MB (1 GB recommended)
+- **Disk Space**: At least 2 GB free space for Asterisk and dependencies
+- **Network**: Ethernet adapter with bridged networking capability
+
+### Recommended Specifications
+
+For optimal performance, especially when testing with multiple SIP clients:
+
+- **RAM**: 2 GB or more
+- **Disk Space**: 5 GB for system, logs, and voicemail storage
+- **Network**: Stable network connection with low latency
+
+## Software Dependencies
+
+The tutorial will guide you through installing the following:
+
+- **OpenSSH Server**: For remote access
+- **Asterisk**: Core PBX system
+- **MariaDB**: Database for advanced features
+- **ODBC Connector**: Database connectivity
+- **Festival**: Text-to-speech functionality
+- **Development Tools**: Compilers and libraries for building Asterisk
+
+<Info>
+All dependencies will be installed step-by-step during the tutorial. No pre-installation is required.
+</Info>
+
+## Network Interface
+
+### Default Configuration
+
+The tutorial uses the following network interface:
+
+- **Interface name**: ens33
+- **Recommended static IP**: 192.168.1.200 (or adjust to your network)
+- **Gateway**: 192.168.1.1 (or your network gateway)
+
+<Note>
+You may need to adjust IP addresses based on your local network configuration. The tutorial will guide you through setting up a static IP address.
+</Note>
+
+## Compatibility Notes
+
+This tutorial is designed for:
+
+- ✅ Debian 9.x (Stretch)
+- ✅ Similar Debian-based distributions
+- ⚠️ May require adjustments for Debian 10+ or other Linux distributions
+- ⚠️ Commands may differ on non-Debian systems (RHEL, CentOS, etc.)
+
+## Next Steps
+
+With your environment prepared according to these specifications, you're ready to begin the tutorial by setting up SSH access to your server.

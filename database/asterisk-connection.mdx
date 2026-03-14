@@ -1,0 +1,271 @@
+---
+title: Connecting Asterisk to MariaDB
+description: Configure Asterisk to use MariaDB through ODBC for flexible PBX management
+---
+
+Connecting Asterisk to MariaDB enables dynamic configuration and data-driven call routing. This guide covers recompiling Asterisk with ODBC support and configuring the connection.
+
+## Recompiling Asterisk with ODBC Support
+
+Asterisk must be compiled with ODBC modules to access databases.
+
+<Steps>
+  <Step title="Navigate to Asterisk Source Directory">
+    ```bash
+    cd /usr/src/asterisk-15.7.1/
+    ```
+  </Step>
+
+  <Step title="Run Configure">
+    ```bash
+    sudo ./configure
+    ```
+  </Step>
+
+  <Step title="Select ODBC Modules">
+    Launch the module selection menu:
+
+    ```bash
+    sudo make menuselect
+    ```
+
+    Enable the following modules:
+
+    **Call Detail Recording:**
+    - `cdr_odbc`
+    - `cdr_adaptive_odbc`
+
+    **Dialplan Functions:**
+    - `func_odbc`
+    - `func_realtime`
+
+    **PBX Modules:**
+    - `pbx_realtime`
+
+    **Resource Modules:**
+    - `res_config_odbc`
+    - `res_odbc`
+  </Step>
+
+  <Step title="Save and Install">
+    Press "Save & Exit" in the menu, then install:
+
+    ```bash
+    sudo make install
+    ```
+  </Step>
+</Steps>
+
+## Configuring res_odbc.conf
+
+The `res_odbc.conf` file defines ODBC connections for Asterisk.
+
+### Basic Configuration
+
+Edit the configuration file:
+
+```bash
+sudo vim /etc/asterisk/res_odbc.conf
+```
+
+Add the following context:
+
+```ini
+[asterisk]
+enabled => yes
+dsn => asterisk-connector
+username => asterisk
+password => asterisk
+pre-connect => yes
+```
+
+**Configuration Parameters:**
+- **enabled**: Activates this ODBC connection
+- **dsn**: References the DSN configured in `/etc/odbc.ini`
+- **username**: MariaDB username
+- **password**: MariaDB password
+- **pre-connect**: Maintains connection while module is loaded
+
+### Reload and Verify
+
+From the Asterisk CLI:
+
+```bash
+asterisk -rvvvvvvc
+```
+
+```
+CLI> module reload res_odbc.so
+CLI> odbc show
+```
+
+You should see your connection listed as "Connected".
+
+<Warning>
+If the connection shows as "Disconnected", verify:
+- ODBC configuration in `/etc/odbc.ini`
+- MariaDB is running
+- Credentials are correct
+- Database exists
+</Warning>
+
+## Creating Custom ODBC Functions
+
+The `func_odbc.conf` file defines custom SQL queries that can be called from the dialplan.
+
+### Configuring func_odbc.conf
+
+Edit the configuration file:
+
+```bash
+sudo vim /etc/asterisk/func_odbc.conf
+```
+
+Add a custom function:
+
+```ini
+[info]
+dsn=asterisk
+readsql=SELECT CONCAT(nombre,' con extension ', extension) from usuarios WHERE nombre='${SQL_ESC(${ARG1})}'
+```
+
+**Function Definition:**
+- **[info]**: Function name (called as `${ODBC_info()}` in dialplan)
+- **dsn**: ODBC connection to use (from `res_odbc.conf`)
+- **readsql**: SQL query for read operations
+
+**SQL_ESC Function:**
+- Escapes special characters to prevent SQL injection
+- Always use `${SQL_ESC()}` when inserting variables into queries
+
+### Advanced func_odbc Examples
+
+**Write operation:**
+
+```ini
+[insertcall]
+dsn=asterisk
+writesql=INSERT INTO call_log (caller, callee, timestamp) VALUES ('${SQL_ESC(${ARG1})}', '${SQL_ESC(${ARG2})}', NOW())
+```
+
+**Query with multiple arguments:**
+
+```ini
+[getuser]
+dsn=asterisk
+readsql=SELECT email FROM usuarios WHERE nombre='${SQL_ESC(${ARG1})}' AND extension='${SQL_ESC(${ARG2})}'
+```
+
+**Stored procedure:**
+
+```ini
+[updatestatus]
+dsn=asterisk
+writesql=CALL update_user_status('${SQL_ESC(${ARG1})}', '${SQL_ESC(${ARG2})}')
+```
+
+## Using ODBC Functions in Dialplan
+
+ODBC functions can be called from `extensions.conf` using the `${ODBC_functionname()}` syntax.
+
+### Basic Example
+
+Edit the dialplan:
+
+```bash
+sudo vim /etc/asterisk/extensions.conf
+```
+
+Add to your context:
+
+```ini
+[empleado]
+exten => 100,1,NoOp(Centralita de distribucion de llamadas)
+same => n,NoOp(Esta llamando ${ODBC_info(${CALLERID(number)})})
+same => n,Playback(silence/1)
+same => n,Playback(mimusica/primavera)
+same => n,Hangup()
+```
+
+**How it works:**
+1. `${CALLERID(number)}` gets the caller's extension
+2. `${ODBC_info()}` calls the custom function with the extension as ARG1
+3. The function queries the database and returns the concatenated string
+4. `NoOp()` displays the result in the Asterisk console
+
+### Advanced Dialplan Examples
+
+**Conditional routing based on database:**
+
+```ini
+exten => 200,1,Set(STATUS=${ODBC_getstatus(${CALLERID(number)})})
+same => n,GotoIf($["${STATUS}" = "active"]?active:inactive)
+same => n(active),Dial(SIP/agent)
+same => n,Hangup()
+same => n(inactive),Playback(account-inactive)
+same => n,Hangup()
+```
+
+**Logging calls to database:**
+
+```ini
+exten => 4000,1,NoOp(Calling Javier)
+same => n,Set(RESULT=${ODBC_insertcall(${CALLERID(number)},4000)})
+same => n,Dial(SIP/javier,15)
+same => n,Hangup()
+```
+
+## Reload Configuration
+
+After modifying configuration files:
+
+```
+CLI> module reload func_odbc.so
+CLI> dialplan reload
+```
+
+## Security Best Practices
+
+<Warning>
+**Always use SQL_ESC()** to escape user input and prevent SQL injection attacks.
+
+**Bad:**
+```ini
+readsql=SELECT * FROM usuarios WHERE nombre='${ARG1}'
+```
+
+**Good:**
+```ini
+readsql=SELECT * FROM usuarios WHERE nombre='${SQL_ESC(${ARG1})}'
+```
+</Warning>
+
+**Additional recommendations:**
+- Use dedicated database user with minimal privileges
+- Never use the database root user for Asterisk connections
+- Store passwords securely (consider using file permissions)
+- Regularly audit database queries in func_odbc.conf
+- Enable query logging during development, disable in production
+
+## Performance Considerations
+
+**Connection pooling:**
+- Set `pre-connect => yes` for frequently used connections
+- Use `max_connections` to limit concurrent database connections
+
+**Query optimization:**
+- Create indexes on frequently queried columns
+- Avoid SELECT * queries - specify only needed columns
+- Use LIMIT clauses when appropriate
+
+**Caching:**
+- Consider caching frequently accessed data
+- Use Asterisk's built-in database (AstDB) for temporary storage
+
+## Next Steps
+
+With Asterisk connected to MariaDB, you're ready to:
+- [Test the database integration](/database/testing-connection)
+- Build dynamic call routing based on database queries
+- Implement CDR (Call Detail Recording) to database
+- Create advanced IVR systems with database lookups

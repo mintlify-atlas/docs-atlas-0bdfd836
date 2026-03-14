@@ -1,0 +1,131 @@
+---
+title: External Calls Simulation
+description: Redirect incoming external calls to internal extensions
+---
+
+Simulate external calls by creating a dedicated context that routes public phone numbers to internal extensions.
+
+## Overview
+
+In a typical PBX deployment, companies receive a range of external phone numbers that map to internal extensions. This allows external callers to reach specific extensions directly.
+
+For example, if a company is assigned the range **995554000-995554999**, calls to **995554001** would route to internal extension **4001**.
+
+## Configuration
+
+### Create External User
+
+Edit the SIP configuration to create a user in the `entrantes` (incoming) context:
+
+```bash
+sudo vim /etc/asterisk/sip.conf
+```
+
+Add the external user:
+
+```ini
+[exterior]
+type=friend
+secret=123456
+context=entrantes
+host=dynamic
+canreinvite=no
+nat=force_rport,comedia
+```
+
+### Configure Dialplan
+
+Edit the extensions configuration:
+
+```bash
+sudo vim /etc/asterisk/extensions.conf
+```
+
+#### Incoming Context
+
+Under the `[entrantes]` context, add pattern matching for external numbers:
+
+```ini
+;----redireccion a la extension marcada
+exten => _995554XXX,1,Set(extension=${EXTEN:5})
+same => n,NoOp(Llamando a la extension ${extension})
+same => n,Goto(empleado,${extension},1)
+same => n,Hangup()
+```
+
+**How it works:**
+- `_995554XXX`: Pattern matches any number from 995554000 to 995554999
+- `${EXTEN:5}`: Extracts the last 4 digits (skipping the first 5 characters)
+- `Goto(empleado,${extension},1)`: Redirects to the employee context at the extracted extension
+
+#### Handle Unavailable Extensions
+
+Under the `[empleado]` context, add a catch-all for extensions without devices:
+
+```ini
+;####-Llamadas desde el exterior que no tienen extension asociada-####
+exten => _4XXX,1,Answer()
+same => n,Festival(La extension ${extension} no se encuentra disponible)
+same => n,Hangup()
+```
+
+This provides a spoken message when calling an unregistered extension.
+
+### Apply Configuration
+
+Reload both SIP and dialplan:
+
+```
+CLI> dialplan reload
+CLI> sip reload
+```
+
+## Testing
+
+### Calling an Available Extension
+
+From the `exterior` user, dial **995554001** to reach extension 4001 (belen):
+
+- The system extracts "4001" from the full number
+- Routes the call to the employee context
+- Connects to the registered device
+
+### Calling an Unavailable Extension
+
+From the `exterior` user, dial **995554022** to reach an unregistered extension:
+
+- The system extracts "4022" from the full number
+- Attempts to route to the employee context
+- Plays the unavailable message via Festival TTS
+
+## Pattern Matching Examples
+
+<CodeGroup>
+```ini Single Range
+; Match 995554000-995554999
+exten => _995554XXX,1,Set(extension=${EXTEN:5})
+```
+
+```ini Multiple Ranges
+; Match multiple external number ranges
+exten => _995554XXX,1,Set(extension=${EXTEN:5})
+exten => _995555XXX,1,Set(extension=${EXTEN:5})
+```
+
+```ini Custom Extraction
+; Different number format (8 digits)
+exten => _99554XXX,1,Set(extension=${EXTEN:4})
+```
+</CodeGroup>
+
+## Understanding Variable Extraction
+
+The `${EXTEN:5}` syntax extracts a substring from the dialed extension:
+
+- `${EXTEN}`: Full dialed number (995554001)
+- `${EXTEN:5}`: Characters starting at position 5 (4001)
+- `${EXTEN:5:2}`: Two characters starting at position 5 (40)
+
+<Note>
+This approach simulates external calls within a local environment. In production, you would configure trunk connections to real PSTN or VoIP providers.
+</Note>

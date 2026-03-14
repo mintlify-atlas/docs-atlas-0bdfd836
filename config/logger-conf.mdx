@@ -1,0 +1,444 @@
+---
+title: "logger.conf Reference"
+description: "Complete reference for Asterisk logging configuration"
+---
+
+## Overview
+
+The `logger.conf` file configures Asterisk's logging system, including log levels, output destinations, and log rotation settings.
+
+## File Location
+
+```
+/etc/asterisk/logger.conf
+```
+
+## Configuration Structure
+
+- `[general]` - General logging settings
+- `[logfiles]` - Log file definitions and levels
+
+## [general] Section
+
+### Date and Time Settings
+
+<ParamField path="dateformat" type="string">
+  Timestamp format for log messages using strftime(3) format specifiers
+  - `%F %T` - ISO 8601 format (yyyy-mm-dd HH:MM:SS)
+  - `%F %T.%3q` - ISO 8601 with milliseconds
+  - Use `%1q` for tenths, `%2q` for hundredths, `%3q` for milliseconds
+</ParamField>
+
+### Call ID Settings
+
+<ParamField path="use_callids" type="boolean" default="yes">
+  Include call IDs in log messages for easier call tracking
+</ParamField>
+
+### Hostname Settings
+
+<ParamField path="appendhostname" type="boolean" default="no">
+  Append hostname to log file names (useful for multi-server environments)
+</ParamField>
+
+### Queue Logging
+
+<ParamField path="queue_log" type="boolean" default="yes">
+  Enable queue event logging to file
+</ParamField>
+
+<ParamField path="queue_log_to_file" type="boolean" default="no">
+  Force queue log to file even when realtime backend is present
+</ParamField>
+
+<ParamField path="queue_log_name" type="string" default="queue_log">
+  Filename for queue log
+</ParamField>
+
+<ParamField path="queue_log_realtime_use_gmt" type="boolean" default="no">
+  Use GMT timestamps for realtime queue logging
+</ParamField>
+
+### Log Rotation Settings
+
+<ParamField path="rotatestrategy" type="string" default="sequential">
+  Log rotation strategy:
+  - `none` - No rotation (use external tool like logrotate)
+  - `sequential` - Newest has highest sequence number
+  - `rotate` - Oldest has highest sequence number (Unix standard)
+  - `timestamp` - Use timestamp in filename
+</ParamField>
+
+<ParamField path="exec_after_rotate" type="string">
+  System command to execute after log rotation
+  - Use `${filename}` placeholder for the log filename
+  - Example: `gzip -9 ${filename}.2`
+</ParamField>
+
+### Queue Size
+
+<ParamField path="logger_queue_limit" type="integer" default="1000">
+  Maximum log messages in queue before discarding new messages
+</ParamField>
+
+## [logfiles] Section
+
+### Log Channel Format
+
+```ini
+logger_name => [formatter]levels
+```
+
+### Logger Types
+
+<ParamField path="console" type="logger">
+  Log to Asterisk root console
+</ParamField>
+
+<ParamField path="syslog" type="logger">
+  Log to Linux syslog. Specify facility with period delimiter:
+  - `syslog.local0`
+  - `syslog.local1`
+  - `syslog.daemon`
+</ParamField>
+
+<ParamField path="filename" type="logger">
+  Log to a file. Can be:
+  - Relative to `astlogdir` (e.g., `messages`)
+  - Absolute path (e.g., `/var/log/asterisk/custom.log`)
+</ParamField>
+
+### Formatters
+
+<ParamField path="[default]" type="formatter">
+  Human-readable format (default if not specified)
+</ParamField>
+
+<ParamField path="[json]" type="formatter">
+  JSON format for structured logging
+  - Note: VERBOSE messages to console use default format even with JSON
+</ParamField>
+
+### Log Levels
+
+<ParamField path="debug" type="level">
+  Debug messages - very verbose, use only for troubleshooting
+</ParamField>
+
+<ParamField path="notice" type="level">
+  Normal informational messages
+</ParamField>
+
+<ParamField path="warning" type="level">
+  Warning messages - potential issues
+</ParamField>
+
+<ParamField path="error" type="level">
+  Error messages - problems that need attention
+</ParamField>
+
+<ParamField path="verbose" type="level">
+  Verbose messages - detailed operational info
+  - Can specify level: `verbose(3)` logs verbose level 3 and below
+  - If no level specified, follows console verbose level
+</ParamField>
+
+<ParamField path="dtmf" type="level">
+  DTMF key press events
+</ParamField>
+
+<ParamField path="fax" type="level">
+  Fax transmission events
+</ParamField>
+
+<ParamField path="security" type="level">
+  Security-related events (authentication failures, etc.)
+</ParamField>
+
+<ParamField path="*" type="level">
+  All log levels including dynamic levels from modules
+  - Can combine with verbose level: `verbose(3),*`
+</ParamField>
+
+### Log Level Combinations
+
+Multiple levels are comma-separated:
+
+```ini
+console => notice,warning,error
+messages => notice,warning,error,verbose(3)
+full => notice,warning,error,debug,verbose,dtmf,fax
+```
+
+## Example Configurations
+
+### Basic Configuration
+
+```ini
+[general]
+
+[logfiles]
+console => notice,warning,error
+messages => notice,warning,error,verbose(3)
+```
+
+### With Debug Logging
+
+```ini
+[general]
+dateformat=%F %T.%3q       ; ISO 8601 with milliseconds
+use_callids = yes
+
+[logfiles]
+console => notice,warning,error,debug
+messages => notice,warning,error,verbose(3)
+debug => debug
+```
+
+### Full Logging
+
+```ini
+[general]
+dateformat=%F %T.%3q
+use_callids = yes
+
+[logfiles]
+console => notice,warning,error
+messages => notice,warning,error,verbose(3)
+full => notice,warning,error,debug,verbose,dtmf,fax
+```
+
+### With JSON Format
+
+```ini
+[general]
+dateformat=%F %T
+
+[logfiles]
+console => notice,warning,error
+messages => notice,warning,error,verbose(3)
+full-json => [json]debug,verbose,notice,warning,error,dtmf,fax
+```
+
+### With Syslog
+
+```ini
+[general]
+
+[logfiles]
+console => notice,warning,error
+messages => notice,warning,error,verbose(3)
+syslog.local0 => notice,warning,error
+```
+
+### With Log Rotation
+
+```ini
+[general]
+dateformat=%F %T
+rotatestrategy = rotate
+exec_after_rotate=gzip -9 ${filename}.2
+
+[logfiles]
+console => notice,warning,error
+messages => notice,warning,error,verbose(3)
+full => notice,warning,error,debug,verbose,dtmf,fax
+```
+
+### Production Configuration
+
+```ini
+[general]
+dateformat=%F %T
+use_callids = yes
+queue_log = yes
+rotatestrategy = rotate
+exec_after_rotate=gzip -9 ${filename}.2
+logger_queue_limit = 1000
+
+[logfiles]
+console => notice,warning,error
+messages => notice,warning,error,verbose(3)
+security => security
+```
+
+### Development Configuration
+
+```ini
+[general]
+dateformat=%F %T.%3q       ; Millisecond precision
+use_callids = yes
+
+[logfiles]
+console => notice,warning,error,debug
+messages => *               ; Everything
+debug => debug              ; Separate debug file
+security => security
+```
+
+## Log File Locations
+
+Default log directory (configured in `asterisk.conf`):
+
+```
+/var/log/asterisk/
+```
+
+Common log files:
+- `messages` - General messages
+- `full` - Full debug log
+- `debug` - Debug messages only
+- `queue_log` - Queue events
+- `security` - Security events
+
+## Managing Logs
+
+### View Live Logs
+
+```bash
+# Tail messages log
+tail -f /var/log/asterisk/messages
+
+# Tail with filtering
+tail -f /var/log/asterisk/messages | grep ERROR
+```
+
+### Rotate Logs Manually
+
+From the CLI:
+```
+asterisk> logger rotate
+```
+
+From the shell:
+```bash
+asterisk -rx "logger rotate"
+```
+
+### Reload Logger Configuration
+
+From the CLI:
+```
+asterisk> logger reload
+```
+
+From the shell:
+```bash
+asterisk -rx "logger reload"
+```
+
+### Enable Debug Temporarily
+
+From the CLI:
+```
+asterisk> core set debug 5
+asterisk> core set verbose 5
+```
+
+Disable:
+```
+asterisk> core set debug 0
+asterisk> core set verbose 0
+```
+
+## Console Logging
+
+When starting Asterisk, control verbosity:
+
+```bash
+# Start with verbosity level 3
+asterisk -vvv
+
+# Start with verbosity level 5 and debug level 5
+asterisk -vvvvv -ddddd
+```
+
+<Note>
+  Each `v` increases verbose level, each `d` increases debug level
+</Note>
+
+## Best Practices
+
+### Production Systems
+
+```ini
+[general]
+dateformat=%F %T
+use_callids = yes
+rotatestrategy = rotate
+exec_after_rotate=gzip -9 ${filename}.2
+
+[logfiles]
+console => notice,warning,error
+messages => notice,warning,error,verbose(3)
+security => security
+```
+
+**Rationale:**
+- Don't enable `debug` - creates massive logs
+- Keep `verbose(3)` or lower
+- Enable security logging
+- Rotate and compress old logs
+- Monitor errors and warnings
+
+### Development/Debugging
+
+```ini
+[general]
+dateformat=%F %T.%3q
+use_callids = yes
+
+[logfiles]
+console => notice,warning,error,debug
+messages => *
+debug => debug
+```
+
+**Rationale:**
+- Full debug output to files
+- Millisecond timestamps for timing issues
+- Separate debug file for analysis
+- All levels captured
+
+### Troubleshooting Specific Issues
+
+For SIP debugging:
+```bash
+asterisk -rx "sip set debug on"
+```
+
+For dialplan debugging:
+```bash
+asterisk -rx "core set debug 3"
+asterisk -rx "core set verbose 5"
+```
+
+For specific channels:
+```bash
+asterisk -rx "core set debug 3 channel SIP/javier-00000001"
+```
+
+## External Log Rotation
+
+If using `rotatestrategy=none`, configure external rotation with logrotate:
+
+```bash
+# /etc/logrotate.d/asterisk
+/var/log/asterisk/messages
+/var/log/asterisk/full {
+    daily
+    rotate 7
+    compress
+    missingok
+    notifempty
+    sharedscripts
+    postrotate
+        /usr/sbin/asterisk -rx "logger rotate" > /dev/null 2>&1 || true
+    endscript
+}
+```
+
+## See Also
+
+- [Starting Asterisk](/installation/starting-asterisk)
+- [Troubleshooting Guide](/reference/troubleshooting)

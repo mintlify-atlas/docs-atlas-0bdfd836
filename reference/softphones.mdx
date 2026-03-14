@@ -1,0 +1,376 @@
+---
+title: SIP Softphone Clients
+description: Overview of recommended SIP softphone applications for testing and using your Asterisk PBX
+---
+
+## What is a Softphone?
+
+A softphone (software + telephone) is a software application used for VoIP communications. It allows you to make calls from your computer or mobile device without requiring specialized hardware.
+
+### Why Use Softphones?
+
+- **Cost-effective testing**: Test your PBX configuration without buying hardware phones
+- **Development flexibility**: Quickly test different scenarios and configurations
+- **Remote accessibility**: Make calls from anywhere with an internet connection
+- **Feature-rich**: Often include advanced features like video calling, instant messaging, and screen sharing
+
+## Recommended Softphones
+
+### Desktop Applications
+
+#### Pangolin (Windows)
+
+**Platform**: Windows  
+**Cost**: Free  
+**Best for**: Basic calling and testing
+
+**Pros**:
+- Simple, straightforward interface
+- Free to use
+- Works well for basic SIP testing
+
+**Cons**:
+- Can be unstable at times
+- Limited advanced features
+- Windows-only
+
+**Configuration**:
+1. Download from [sip-system.com](https://sip-system.com/en/pc/20-pangolin.html)
+2. Install and launch the application
+3. Go to Settings and enter:
+   - **SIP Server**: Your Asterisk server IP (e.g., 192.168.1.180)
+   - **Username**: Your SIP extension (e.g., javier)
+   - **Password**: Your SIP secret
+   - **Port**: 5060 (or 5061 for TLS)
+
+---
+
+#### Zoiper (Multi-platform)
+
+**Platforms**: Windows, macOS, Linux, Android, iOS  
+**Cost**: Free (basic), Paid (advanced features)  
+**Best for**: Cross-platform consistency and reliability
+
+**Pros**:
+- Available on all major platforms
+- Very stable and reliable
+- Intuitive user interface
+- Good audio quality
+- Supports video calls (paid version)
+
+**Cons**:
+- Some features require paid upgrade
+- Free version has occasional ads
+
+**Configuration**:
+1. Download from [zoiper.com](https://www.zoiper.com/)
+2. Launch and select "Create Account"
+3. Choose "SIP" as protocol
+4. Enter details:
+   - **Domain/Server**: Your Asterisk IP:port (e.g., 192.168.1.180:5060)
+   - **Username**: Your extension
+   - **Password**: Your secret
+   - **Authentication username**: Same as username
+
+**Example Setup**:
+```
+Username: belen
+Password: 12345678
+Domain: 192.168.1.180
+Outbound proxy: (leave blank)
+```
+
+---
+
+#### 3CX (Windows)
+
+**Platform**: Windows  
+**Cost**: Free  
+**Best for**: Professional use and iPhone simulation
+
+**Pros**:
+- Fast and stable
+- Clean, modern interface resembling early iPhone
+- Easy to use
+- Professional features
+- Completely free
+
+**Cons**:
+- Windows-only
+- Lacks some advanced configuration options
+
+---
+
+#### Blink (Windows, macOS, Linux)
+
+**Platforms**: Windows, macOS, Linux  
+**Cost**: Free  
+**Best for**: TLS/Secure connections and advanced users
+
+**Pros**:
+- Excellent TLS certificate support
+- Easy certificate import
+- Clean, professional interface
+- Good for secure calling
+- Supports instant messaging
+- Screen sharing capabilities
+
+**Cons**:
+- More complex setup
+- May be overkill for simple testing
+
+**TLS Configuration**:
+1. Download from [icanblink.com](http://icanblink.com/)
+2. Go to Account settings
+3. Enable "TLS" transport
+4. Import your client certificate (.pem file):
+   - **Certificate**: javier.pem
+   - **CA Certificate**: ca.crt
+5. Configure server details:
+   - **SIP Address**: javier@192.168.1.180
+   - **Password**: Your secret
+   - **Transport**: TLS
+   - **Port**: 5061
+
+**Example for Secure Extension**:
+```
+Account name: Javier Secure
+SIP Address: javier@192.168.1.180
+Password: 310195
+Transport: TLS
+Certificate: /etc/asterisk/keys/javier.pem
+```
+
+### Mobile Applications
+
+#### Zoiper (Android & iOS)
+
+**Platforms**: Android, iOS  
+**Cost**: Free (basic), Paid (pro features)  
+**Best for**: Mobile calling and on-the-go access
+
+**Configuration** (Android example):
+1. Install from Google Play Store
+2. Open app and tap "Settings"
+3. Tap "Accounts" → "Add Account"
+4. Select "SIP Account"
+5. Enter:
+   - **Account name**: My Extension
+   - **Host**: 192.168.1.180:5060
+   - **Username**: Your extension (e.g., 4001)
+   - **Password**: Your secret
+
+---
+
+#### Sipnetic (Android)
+
+**Platform**: Android  
+**Cost**: Free (calls and messages), Paid (advanced features)  
+**Best for**: Android mobile users
+
+**Pros**:
+- Most user-friendly mobile SIP client
+- Excellent for sending SIP messages
+- Good call quality
+- Integrates well with Android
+- Free for basic calling and messaging
+
+**Cons**:
+- Android-only
+- Some advanced features require payment
+
+---
+
+#### MizuDroid (Android)
+
+**Platform**: Android  
+**Cost**: Free  
+**Best for**: SIP messaging and basic calling
+
+**Pros**:
+- Excellent SIP message implementation
+- Good for testing messaging features
+- Completely free
+- Lightweight
+
+**Cons**:
+- Interface could be more modern
+- Limited video support
+
+## Basic Connection Settings
+
+Regardless of which softphone you choose, you'll need these basic settings:
+
+### Required Information
+
+- **SIP Server/Domain**: Your Asterisk server IP address
+- **Username/Extension**: The SIP username defined in `sip.conf`
+- **Password/Secret**: The password defined in `sip.conf`
+- **Port**: Usually 5060 for UDP/TCP, 5061 for TLS
+- **Transport**: UDP, TCP, or TLS
+
+### Example sip.conf Entry
+
+```ini
+[javier]
+type=friend
+secret=310195
+context=empleado
+host=dynamic
+canreinvite=no
+nat=force_rport,comedia
+```
+
+### Corresponding Softphone Settings
+
+```
+Username: javier
+Password: 310195
+Domain/Server: 192.168.1.180
+Port: 5060
+Transport: UDP
+```
+
+## Testing Your Configuration
+
+### 1. Check Registration
+
+From Asterisk CLI:
+```
+CLI> sip show peers
+```
+
+You should see your softphone listed with status "OK".
+
+### 2. Make a Test Call
+
+With two softphones registered (e.g., extensions 4000 and 4001):
+1. From extension 4000, dial 4001
+2. The other softphone should ring
+3. Answer to establish the call
+
+### 3. Check Console Output
+
+Watch the Asterisk console for call flow:
+```bash
+$ sudo asterisk -rvvvvvvc
+```
+
+You should see:
+- Registration messages
+- INVITE requests
+- Call establishment
+- Audio stream information
+
+## Common Issues and Solutions
+
+### Softphone Won't Register
+
+**Symptoms**: Shows "Offline" or "Registration Failed"
+
+**Solutions**:
+- Verify IP address is correct
+- Check username and password match `sip.conf`
+- Ensure Asterisk is running: `sudo /etc/init.d/asterisk status`
+- Check firewall isn't blocking ports 5060-5061
+- Verify NAT settings if on different network
+
+### No Audio During Calls
+
+**Symptoms**: Call connects but no voice
+
+**Solutions**:
+- Check codec compatibility
+- Verify `directmedia=no` in `sip.conf`
+- Configure NAT settings properly:
+  ```ini
+  nat=force_rport,comedia
+  ```
+- Check firewall allows RTP ports (10000-20000)
+
+### Call Drops Immediately
+
+**Symptoms**: Call connects then immediately hangs up
+
+**Solutions**:
+- Check dial plan syntax in `extensions.conf`
+- Verify context permissions
+- Look for errors in Asterisk console
+- Ensure extension exists in dial plan
+
+## Advanced Features
+
+### SIP Messaging
+
+To send SIP messages between softphones:
+
+1. Configure messaging in `sip.conf`:
+```ini
+accept_outofcall_message=yes
+outofcall_message_context=mensajes
+auth_message_requests=yes
+subscribecontext=suscribir
+```
+
+2. Use clients that support SIP MESSAGE (Zoiper, Sipnetic, MizuDroid)
+
+3. Enter recipient extension and send message
+
+### Call Transfer
+
+Most softphones support call transfer:
+
+**Attended Transfer** (talk before transferring):
+1. During active call, press "Transfer" or "Consult"
+2. Dial extension to transfer to
+3. Talk to them, then complete transfer
+
+**Blind Transfer** (transfer without talking):
+1. During call, press "Transfer"
+2. Dial extension
+3. Hang up - call is transferred
+
+**In Blink**: Drag and drop call sessions while holding Alt key
+
+### Voicemail Access
+
+To access voicemail from softphone:
+1. Dial `*` + your extension (e.g., `*4000`)
+2. Enter PIN when prompted
+3. Follow voice prompts
+
+## Comparison Table
+
+| Softphone | Platform | TLS Support | Messaging | Cost | Best Use Case |
+|-----------|----------|-------------|-----------|------|---------------|
+| Pangolin | Windows | No | No | Free | Simple testing |
+| Zoiper | All | Yes | Yes | Free/Paid | General purpose |
+| 3CX | Windows | Yes | Yes | Free | Professional desktop |
+| Blink | Win/Mac/Linux | Excellent | Yes | Free | Secure calling |
+| Sipnetic | Android | Yes | Yes | Free/Paid | Mobile calling |
+| MizuDroid | Android | Yes | Yes | Free | Mobile messaging |
+
+## Additional Tools
+
+### For Testing
+
+- **SIPp**: Command-line load testing tool
+- **Wireshark**: Packet capture for debugging SIP traffic
+- **sngrep**: Terminal-based SIP packet viewer
+
+### For File Transfer
+
+- **FileZilla**: SFTP client for uploading audio files
+- **WinSCP**: Windows SFTP client
+
+### For SSH Access
+
+- **MobaXterm**: Feature-rich SSH client for Windows
+- **PuTTY**: Lightweight SSH client
+- **Terminal**: Built-in on macOS/Linux
+
+## Related Topics
+
+- [Call Center Example](/advanced/call-center-example)
+- [Troubleshooting Common Issues](/reference/troubleshooting)
+- [Useful Links and Resources](/reference/useful-links)

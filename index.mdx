@@ -1,97 +1,128 @@
 ---
-title: "Introduction"
-description: "Welcome to the new home for your documentation"
+title: "Asterisk PBX Tutorial"
+description: "Complete guide for installing and configuring Asterisk PBX on Debian with advanced features"
 ---
 
-## Setting up
+<div style={{
+  background: 'linear-gradient(135deg, #ee7924 0%, #d15a0a 100%)',
+  padding: '3rem 2rem',
+  borderRadius: '0px',
+  color: 'white',
+  marginBottom: '2rem'
+}}>
+  <h1 style={{ fontSize: '2.5rem', fontWeight: 700, marginBottom: '1rem', color: 'white' }}>
+    Asterisk PBX Tutorial
+  </h1>
+  <p style={{ fontSize: '1.25rem', opacity: 0.95, color: 'white' }}>
+    Comprehensive Spanish-language guide for installing and configuring Asterisk PBX on Debian
+  </p>
+</div>
 
-Get your documentation site up and running in minutes.
+## Welcome to Asterisk Tutorial
 
-<Card
-  title="Start here"
-  icon="rocket"
-  href="/quickstart"
-  horizontal
->
-  Follow our three step quickstart guide.
-</Card>
+This comprehensive tutorial will guide you through the complete process of installing and configuring **Asterisk PBX** on Debian 9.11. Whether you're new to PBX systems or looking to expand your telephony infrastructure knowledge, this guide provides step-by-step instructions for setting up a fully functional call center environment.
 
-## Make it yours
+<Note>
+This tutorial was created as a learning resource and includes real-world implementations of common PBX features. While this is a beginner-friendly guide, some errors may exist as this represents hands-on learning with Asterisk.
+</Note>
 
-Design a docs site that looks great and empowers your users.
+## What You'll Learn
 
-<Columns cols={2}>
-  <Card
-    title="Edit locally"
-    icon="pen-to-square"
-    href="/development"
-  >
-    Edit your docs locally and preview them in real time.
+<CardGroup cols={2}>
+  <Card title="Installation & Setup" icon="download" href="/installation/asterisk-installation">
+    Install Asterisk 15.7.1 on Debian with all dependencies and initial configuration
   </Card>
-  <Card
-    title="Customize your site"
-    icon="palette"
-    href="/essentials/settings"
-  >
-    Customize the design and colors of your site to match your brand.
+  <Card title="PBX Features" icon="phone" href="/features/voicemail">
+    Configure voicemail, call transfer, messaging, and advanced call features
   </Card>
-    <Card
-    title="Set up navigation"
-    icon="map"
-    href="/essentials/navigation"
-  >
-    Organize your docs to help users find what they need and succeed with your product.
+  <Card title="Database Integration" icon="database" href="/database/mariadb-installation">
+    Integrate MariaDB with Asterisk using ODBC connectors
   </Card>
-  <Card
-    title="API documentation"
-    icon="terminal"
-    href="/api-reference/introduction"
-  >
-    Auto-generate API documentation from OpenAPI specifications.
+  <Card title="Call Center Example" icon="headset" href="/advanced/call-center-example">
+    Build a complete call center system with queues and distributions
   </Card>
-</Columns>
+</CardGroup>
 
-## Create beautiful pages
+## Key Features Covered
 
-Everything you need to create world-class documentation.
+This tutorial demonstrates how to implement the following PBX features:
 
-<Columns cols={2}>
-  <Card
-    title="Write with MDX"
-    icon="pen-fancy"
-    href="/essentials/markdown"
-  >
-    Use MDX to style your docs pages.
-  </Card>
-  <Card
-    title="Code samples"
-    icon="code"
-    href="/essentials/code"
-  >
-    Add sample code to demonstrate how to use your product.
-  </Card>
-  <Card
-    title="Images"
-    icon="image"
-    href="/essentials/images"
-  >
-    Display images and other media.
-  </Card>
-  <Card
-    title="Reusable snippets"
-    icon="recycle"
-    href="/essentials/reusable-snippets"
-  >
-    Write once and reuse across your docs.
-  </Card>
-</Columns>
+- **Voicemail System** with Spanish language support
+- **Call Transfer & Redirection** between extensions
+- **SIP Messaging** center for text communication
+- **Group Calls** with call distribution
+- **Call Pickup** functionality for shared extensions
+- **Text-to-Speech** using Festival TTS engine
+- **TLS Call Encryption** for secure communications
+- **MariaDB Integration** for scalable data storage
+- **DUNDi Protocol** for PBX interconnection
+- **Business Hours** management and routing
+- **Call Logging** and monitoring
 
-## Need inspiration?
+## Technical Environment
 
-<Card
-  title="See complete examples"
-  icon="stars"
-  href="https://mintlify.com/customers"
->
-  Browse our showcase of exceptional documentation sites.
-</Card>
+<Info>
+**System Requirements:**
+- Debian 9.11 (GNU bash 4.4.12)
+- Asterisk 15.7.1
+- VMware Workstation 14 Player (Bridged network mode)
+- MariaDB for database integration
+- Festival for text-to-speech
+</Info>
+
+## Quick Start
+
+<Steps>
+  <Step title="Setup SSH Connection">
+    Configure static IP and enable SSH access to your Debian server
+    
+    [SSH Configuration Guide →](/setup/ssh-connection)
+  </Step>
+  
+  <Step title="Install Asterisk">
+    Download, compile, and install Asterisk with all required dependencies
+    
+    [Installation Guide →](/installation/asterisk-installation)
+  </Step>
+  
+  <Step title="Configure Features">
+    Set up SIP extensions, dialplan, and PBX features
+    
+    [Feature Configuration →](/features/voicemail)
+  </Step>
+  
+  <Step title="Test Your Setup">
+    Make test calls between extensions to verify functionality
+    
+    [Testing Guide →](/installation/testing)
+  </Step>
+</Steps>
+
+## About This Tutorial
+
+This tutorial was developed as part of a university project to learn Asterisk PBX configuration. The guide is structured in modular sections, making it easy to understand each concept before moving to more complex implementations.
+
+All configuration examples are based on real working setups, and the tutorial culminates in implementing a complete call center for a health center scenario.
+
+<CardGroup cols={2}>
+  <Card title="Configuration Files" icon="file-code" href="/config/sip-conf">
+    Reference documentation for sip.conf, extensions.conf, and other configuration files
+  </Card>
+  <Card title="Softphones" icon="mobile" href="/reference/softphones">
+    Recommended SIP softphone clients for testing (Pangolin, ZoiPer, Blink)
+  </Card>
+  <Card title="Troubleshooting" icon="wrench" href="/reference/troubleshooting">
+    Common issues and solutions when configuring Asterisk
+  </Card>
+  <Card title="GitHub Repository" icon="github" href="https://github.com/javierorp/Asterisk_Tutorial">
+    Access the complete source code and configuration files
+  </Card>
+</CardGroup>
+
+## Need Help?
+
+If you detect any errors, have questions, or want to provide suggestions, please contact the author through:
+
+- [LinkedIn](https://es.linkedin.com/in/javierortipriego)
+- [GitHub](https://github.com/javierorp)
+- [Email](mailto:javierorp@proton.me)

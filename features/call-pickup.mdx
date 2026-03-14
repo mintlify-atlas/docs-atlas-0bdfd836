@@ -1,0 +1,355 @@
+---
+title: 'Call Pickup Feature'
+description: 'Configure call pickup to answer calls ringing at other extensions'
+---
+
+## Overview
+
+Call pickup allows users to answer calls ringing at another extension from their own phone. This is useful in shared office environments where users can cover for absent colleagues without leaving their desk.
+
+## Use Case Example
+
+In a department with multiple phones:
+- Extension 4001 (Belen's desk) is ringing
+- Belen is away from her desk
+- Javier hears the phone ringing
+- Instead of walking to Belen's desk, Javier dials `*84001` from his phone
+- The call transfers to Javier's phone
+
+## Configuration Steps
+
+### 1. Check features.conf
+
+The default pickup code is configured in the features file:
+
+```bash
+sudo vim /etc/asterisk/features.conf
+```
+
+The default configuration uses `*8` as the pickup prefix:
+
+```ini
+[featuremap]
+pickup => *8
+```
+
+<Note>
+You typically don't need to modify `features.conf`. The default `*8` prefix works well for most installations.
+</Note>
+
+Verify the configuration from the Asterisk CLI:
+
+```
+CLI> features show
+```
+
+### 2. Configure Call Groups in sip.conf
+
+Define which users belong to which call groups and which groups they can pickup from:
+
+```bash
+sudo vim /etc/asterisk/sip.conf
+```
+
+**Configure call groups:**
+
+```ini
+[javier]
+type=friend
+secret=310195
+context=empleado
+host=dynamic
+canreinvite=no
+nat=force_rport,comedia
+callgroup=2
+pickupgroup=2
+
+[belen]
+type=friend
+secret=120995
+context=empleado
+host=dynamic
+canreinvite=no
+nat=force_rport,comedia
+callgroup=2
+pickupgroup=2
+
+[director]
+type=friend
+secret=130261
+context=direccion
+host=dynamic
+canreinvite=no
+nat=force_rport,comedia
+callgroup=1
+pickupgroup=1,2
+```
+
+### Understanding Call Groups
+
+**callgroup**: The group this device belongs to
+**pickupgroup**: The group(s) this device can pickup calls from
+
+**Example permissions:**
+- **Javier**: In group 2, can pickup from group 2
+- **Belen**: In group 2, can pickup from group 2  
+- **Director**: In group 1, can pickup from groups 1 and 2
+
+**Result:**
+- Javier and Belen can pickup each other's calls
+- Director can pickup calls to Javier, Belen, or other directors
+- Javier and Belen **cannot** pickup the director's calls
+
+### 3. Configure Pickup in extensions.conf
+
+Add pickup functionality to the dialplan:
+
+```bash
+sudo vim /etc/asterisk/extensions.conf
+```
+
+**For the empleado context:**
+
+```ini
+[empleado]
+; Existing extensions
+exten => 4000,1,NoOp(Llamando a Javier)
+same => n,Dial(SIP/javier,15)
+same => n,VoiceMail(${EXTEN})
+same => n,Hangup()
+
+exten => 4001,1,NoOp(Llamando a Belen)
+same => n,Dial(SIP/belen,15)
+same => n,VoiceMail(${EXTEN})
+same => n,Hangup()
+
+; Call pickup functionality
+exten => _*8.,1,NoOp(Capturando llamada a la extension ${EXTEN:2})
+same => n,Pickup(${EXTEN:2})
+same => n,Hangup()
+```
+
+**For the direccion context:**
+
+```ini
+[direccion]
+; Director can call employees
+exten => 4000,1,NoOp(Llamando a Javier)
+same => n,Dial(SIP/javier,15)
+same => n,VoiceMail(${EXTEN})
+same => n,Hangup()
+
+exten => 4001,1,NoOp(Llamando a Belen)
+same => n,Dial(SIP/belen,15)
+same => n,VoiceMail(${EXTEN})
+same => n,Hangup()
+
+; Call pickup with context specification
+exten => _*8.,1,NoOp(Capturando llamada a la extension ${EXTEN:2})
+same => n,Pickup(${EXTEN:2}@empleado)
+same => n,Hangup()
+```
+
+### 4. Reload Configuration
+
+```
+CLI> dialplan reload
+CLI> sip reload
+```
+
+## How It Works
+
+### Pickup Extension Pattern
+
+```ini
+exten => _*8.,1,NoOp(Capturando llamada a la extension ${EXTEN:2})
+```
+
+**_*8.**: Matches any extension starting with `*8`
+- `_` indicates a pattern match
+- `*8` is the literal prefix
+- `.` matches one or more digits
+
+**`${EXTEN:2}`**: Extracts the extension number
+- `${EXTEN}` is the dialed number (e.g., `*84001`)
+- `:2` skips the first 2 characters (`*8`)
+- Result: `4001`
+
+### Pickup() Function
+
+```ini
+Pickup(${EXTEN:2})
+```
+
+Attempts to pickup a call to the specified extension in the same context.
+
+```ini
+Pickup(${EXTEN:2}@empleado)
+```
+
+Attempts to pickup a call to the specified extension in a different context.
+
+## Testing Call Pickup
+
+### Test Scenario 1: Successful Pickup
+
+1. **Oscar calls** Belen at extension `4001`
+2. **Belen's phone rings** but she doesn't answer
+3. **Javier dials** `*84001` from his phone
+4. **Call transfers** to Javier's phone
+5. **Javier and Oscar** are now connected
+6. **Belen's phone** stops ringing
+
+**Console trace shows:**
+- Incoming call to 4001 (Belen)
+- Pickup attempt by Javier
+- Call bridged to Javier
+- Belen's channel cancelled
+
+### Test Scenario 2: Unauthorized Pickup
+
+1. **Oscar calls** the director at extension `5000`
+2. **Director's phone rings**
+3. **Javier tries** to pickup with `*85000`
+4. **Pickup fails** - Javier is not in director's pickup group
+5. **Error message** or failed pickup tone
+
+**Console trace shows:**
+- Pickup attempt
+- Permission denied (not in pickupgroup)
+- Original call continues ringing
+
+## Group Permission Examples
+
+### Scenario 1: Peer-to-Peer
+
+Employees can only pickup from each other:
+
+```ini
+[employee1]
+callgroup=10
+pickupgroup=10
+
+[employee2]  
+callgroup=10
+pickupgroup=10
+```
+
+### Scenario 2: Hierarchical
+
+Managers can pickup employee calls, but not vice versa:
+
+```ini
+[employee]
+callgroup=20
+pickupgroup=20
+
+[manager]
+callgroup=30
+pickupgroup=20,30
+```
+
+### Scenario 3: Departmental
+
+Multiple departments, no cross-department pickup:
+
+```ini
+[sales1]
+callgroup=100
+pickupgroup=100
+
+[sales2]
+callgroup=100
+pickupgroup=100
+
+[support1]
+callgroup=200
+pickupgroup=200
+
+[support2]
+callgroup=200  
+pickupgroup=200
+```
+
+### Scenario 4: Universal Access
+
+Receptionist can pickup any department:
+
+```ini
+[reception]
+callgroup=1
+pickupgroup=1,100,200,300
+
+[sales]
+callgroup=100
+pickupgroup=100
+
+[support]
+callgroup=200
+pickupgroup=200
+
+[management]
+callgroup=300
+pickupgroup=300
+```
+
+## Troubleshooting
+
+### Pickup Doesn't Work
+
+**Check these items:**
+
+1. **Call groups match:**
+   ```
+   CLI> sip show peer javier
+   ```
+   Verify `callgroup` and `pickupgroup` values
+
+2. **Pattern matching:**
+   ```
+   CLI> dialplan show empleado
+   ```
+   Ensure `_*8.` pattern exists
+
+3. **Context access:**
+   - Verify user context includes pickup extension
+   - Check for typos in context names
+
+### Wrong Extension Picked Up
+
+**Common causes:**
+- Multiple calls ringing simultaneously
+- Pattern match error in dialplan
+- Extension number typo
+
+### No Ringing Calls to Pickup
+
+**Verify:**
+- Call is still ringing (not answered or timed out)
+- Target extension is correct
+- Pickup attempted within ring timeout period
+
+<Warning>
+**Permission errors are silent:**
+When a user tries to pickup a call they don't have permission for, the pickup simply fails without a detailed error message on their phone. Check the Asterisk console for permission denied messages.
+</Warning>
+
+## Best Practices
+
+<Tip>
+**Group numbering:**
+Use logical group numbers that correspond to departments or organizational structure:
+- 1-10: Management
+- 11-20: Sales
+- 21-30: Support  
+- 31-40: Engineering
+</Tip>
+
+<Note>
+**Multiple pickupgroups:**
+You can specify multiple pickup groups separated by commas:
+```ini
+pickupgroup=1,2,3,4
+```
+This allows flexible permission structures.
+</Note>

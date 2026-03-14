@@ -1,0 +1,207 @@
+---
+title: Text-to-Speech with Festival
+description: Configure Festival TTS for voice announcements in Asterisk
+---
+
+Festival is a free text-to-speech (TTS) system that enables Asterisk to convert text into spoken audio for call announcements and automated messages.
+
+## Installation
+
+Install the Festival package on your system:
+
+```bash
+sudo apt-get install festival
+```
+
+Stop Asterisk before configuration:
+
+```bash
+sudo /etc/init.d/asterisk stop
+```
+
+## Configuring Festival
+
+### Modify festival.scm
+
+Edit the Festival configuration file and add the Asterisk integration function before the last line (`provide 'festival`):
+
+```bash
+sudo vim /usr/share/festival/festival.scm
+```
+
+Add this function definition:
+
+```scheme
+(define (tts_textasterisk string mode)
+  (let ((wholeutt (utt.synth (eval (list 'Utterance 'Text string)))))
+    (utt.wave.resample wholeutt 8000)
+    (utt.wave.rescale wholeutt 5)
+    (utt.send.wave.client wholeutt)))
+```
+
+Reboot the system:
+
+```bash
+sudo reboot
+```
+
+### Create Festival Service
+
+Festival needs to start automatically with the system. Create a systemd service:
+
+```bash
+sudo vim /etc/systemd/system/festival.service
+```
+
+Add the following configuration:
+
+```ini
+[Unit]
+Description=Servicio para Festival TTS
+Wants=network.target
+After=syslog.target network-online.target
+
+[Service]
+Type=simple
+ExecStart=/usr/bin/festival --server
+Restart=on-failure
+RestartSec=10
+KillMode=process
+
+[Install]
+WantedBy=multi-user.target
+```
+
+Reload systemd and enable the service:
+
+```bash
+sudo systemctl daemon-reload
+sudo systemctl enable festival.service
+```
+
+Reboot and verify the service is active:
+
+```bash
+sudo reboot
+sudo systemctl status festival.service
+```
+
+Manage the service with:
+
+```bash
+sudo systemctl start|stop|status festival.service
+```
+
+## Installing Spanish Voices
+
+The Junta de Andalucía provides Spanish voices for Festival available on [GitHub](https://github.com/franjvasquezg/festival-spanish-voices).
+
+Download and install:
+
+```bash
+cd /home/your_user/archivos
+wget https://github.com/franjvasquezg/festival-spanish-voices/archive/master.zip
+unzip master.zip
+cd festival-spanish-voices-master/
+sudo mkdir /usr/share/festival/voices/spanish
+sudo cp -r JuntaDeAndalucia_es_* /usr/share/festival/voices/spanish/
+```
+
+Verify installation:
+
+```bash
+ls -l /usr/share/festival/voices/spanish/
+```
+
+Two voice options are available:
+- `JuntaDeAndalucia_es_pa_diphone` - Male voice
+- `JuntaDeAndalucia_es_sf_diphone` - Female voice
+
+### Set Default Voice
+
+Configure the default voice (female in this example):
+
+```bash
+sudo vim /etc/festival.scm
+```
+
+Add at the end of the file:
+
+```scheme
+(set! voice_default 'voice_JuntaDeAndalucia_es_sf_diphone)
+```
+
+Restart the service:
+
+```bash
+sudo systemctl restart festival.service
+```
+
+## Integrating with Asterisk
+
+Navigate to your Asterisk source directory and open the menu:
+
+```bash
+cd /usr/src/asterisk-15.7.1/
+sudo make menuselect
+```
+
+Enable **Applications → app_festival** under the Extended section.
+
+Install and start Asterisk:
+
+```bash
+sudo make install
+sudo /etc/init.d/asterisk start
+```
+
+Verify the Festival application is loaded:
+
+```bash
+sudo asterisk -rvvvvvvc
+```
+
+```
+CLI> core show application festival
+```
+
+If not loaded, manually load the module:
+
+```
+CLI> module load app_festival.so
+CLI> module show app_festival.so
+```
+
+## Using Festival in Dialplan
+
+Edit your extensions configuration:
+
+```bash
+sudo vim /etc/asterisk/extensions.conf
+```
+
+Example usage for a receptionist extension:
+
+```ini
+;-----centralita
+exten => 100,1,NoOp(Centralita de distribucion de llamadas)
+same => n,NoOp(Esta llamando ${ODBC_info(${CALLERID(number)})})
+same => n,Festival(Va a escuchar un fragmento de la primavera de Antonio Vivaldi)
+same => n,Playback(silence/1)
+same => n,Playback(mimusica/primavera)
+same => n,Hangup()
+```
+
+Reload the dialplan:
+
+```
+CLI> dialplan reload
+```
+
+## Testing
+
+Call extension 100 from any registered user. You should hear the Spanish TTS announcement followed by the audio playback.
+
+<Note>
+The `Festival()` function accepts any text string and converts it to speech using the configured default voice.
+</Note>

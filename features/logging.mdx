@@ -1,0 +1,239 @@
+---
+title: Call Logging
+description: Configure Asterisk logging to track calls and troubleshoot issues
+---
+
+Asterisk provides comprehensive logging capabilities to track call activity, debug issues, and maintain audit trails.
+
+## Log Files Location
+
+Asterisk stores log files in:
+
+```
+/var/log/asterisk/
+```
+
+## Viewing the Messages Log
+
+The primary log file is `messages`. View recent entries:
+
+```bash
+tail /var/log/asterisk/messages
+```
+
+View with continuous updates:
+
+```bash
+tail -f /var/log/asterisk/messages
+```
+
+## Logger Configuration
+
+### Check Current Settings
+
+View active logging channels from the Asterisk CLI:
+
+```
+CLI> logger show channels
+```
+
+By default, the console has verbose mode enabled, but the messages file may not capture all call details.
+
+### Configure logger.conf
+
+Edit the logger configuration:
+
+```bash
+sudo vim /etc/asterisk/logger.conf
+```
+
+Under the `[logfiles]` section, configure log levels:
+
+```ini
+console => notice,warning,error
+messages => notice,warning,error,verbose(3)
+```
+
+**Log levels:**
+- `notice`: Normal but significant events
+- `warning`: Warning messages
+- `error`: Error conditions
+- `verbose(N)`: Detailed call traces (N = 1-9 verbosity level)
+- `debug`: Debug messages
+
+### Apply Configuration
+
+Reload the logger configuration:
+
+```
+CLI> logger reload
+CLI> logger show channels
+```
+
+Verify that `verbose(3)` is now active for the messages file.
+
+## Verbosity Levels
+
+Verbose levels control detail in logs:
+
+- `verbose(1)`: Basic call flow
+- `verbose(3)`: Detailed call information (recommended)
+- `verbose(5)`: Very detailed debugging
+- `verbose(9)`: Maximum verbosity
+
+## Testing Logging
+
+Make a test call and view the logged output:
+
+```bash
+tail -n 15 /var/log/asterisk/messages
+```
+
+You should now see detailed call traces including:
+- Call setup and teardown
+- Extension matches
+- Application execution
+- Call duration
+
+## Call Detail Records (CDR)
+
+### Master.csv
+
+Asterisk maintains a CSV file with all call records:
+
+```
+/var/log/asterisk/cdr-csv/Master.csv
+```
+
+View formatted CDR data:
+
+```bash
+column -s, -t < /var/log/asterisk/cdr-csv/Master.csv | less -#2 -N -S
+```
+
+**CDR fields include:**
+- Account code
+- Source and destination
+- Context and channel
+- Call start time
+- Answer time
+- End time
+- Duration and billable seconds
+- Disposition (ANSWERED, NO ANSWER, BUSY, FAILED)
+- Unique ID
+
+## Log File Management
+
+<Warning>
+Verbose logging significantly increases log file size. Use verbose mode selectively for troubleshooting, then disable it for normal operation.
+</Warning>
+
+### Rotate Logs
+
+Manually rotate logs:
+
+```
+CLI> logger rotate
+```
+
+This creates timestamped copies of current logs and starts fresh files.
+
+### Configure Log Rotation
+
+Edit logrotate configuration:
+
+```bash
+sudo vim /etc/logrotate.d/asterisk
+```
+
+Example configuration:
+
+```
+/var/log/asterisk/messages
+/var/log/asterisk/queue_log {
+    daily
+    rotate 7
+    missingok
+    notifempty
+    sharedscripts
+    postrotate
+        /usr/sbin/asterisk -rx 'logger reload' > /dev/null 2>&1
+    endscript
+}
+```
+
+## Custom Log Files
+
+Create separate log files for specific purposes:
+
+```ini
+[logfiles]
+console => notice,warning,error
+messages => notice,warning,error,verbose(3)
+security => security
+cdr-custom => cdr
+```
+
+## Debugging Specific Modules
+
+Enable debug for specific modules:
+
+```
+CLI> core set debug 3 channel SIP/javier
+```
+
+Disable debugging:
+
+```
+CLI> core set debug off
+```
+
+## Log Levels Reference
+
+<CodeGroup>
+```ini Production
+; Minimal logging for production
+messages => notice,warning,error
+```
+
+```ini Development
+; Detailed logging for development
+messages => notice,warning,error,verbose(5),debug(3)
+```
+
+```ini Troubleshooting
+; Maximum logging for troubleshooting
+messages => notice,warning,error,verbose(9),debug(9)
+full => notice,warning,error,verbose(9),debug(9)
+```
+</CodeGroup>
+
+## Common Log Locations
+
+| Log File | Purpose |
+|----------|----------|
+| `messages` | Main system log |
+| `full` | Complete verbose log |
+| `error` | Error messages only |
+| `security` | Security events |
+| `queue_log` | Queue activity |
+| `cdr-csv/Master.csv` | Call detail records |
+| `cdr-custom/` | Custom CDR output |
+
+## Viewing Logs in Real-Time
+
+Monitor multiple logs simultaneously:
+
+```bash
+tail -f /var/log/asterisk/messages /var/log/asterisk/queue_log
+```
+
+Filter specific information:
+
+```bash
+tail -f /var/log/asterisk/messages | grep "4001"
+```
+
+<Note>
+After troubleshooting, remember to reduce verbosity to prevent excessive disk usage and maintain system performance.
+</Note>

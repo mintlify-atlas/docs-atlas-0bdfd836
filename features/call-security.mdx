@@ -1,0 +1,165 @@
+---
+title: Call Security with TLS
+description: Encrypt SIP calls using TLS (Transport Layer Security)
+---
+
+Secure your Asterisk communications by implementing TLS encryption for SIP calls, protecting call privacy and data integrity.
+
+## Overview
+
+TLS (Transport Layer Security) provides encryption for SIP signaling, making calls more secure against eavesdropping and man-in-the-middle attacks.
+
+## Creating Certificates
+
+### Create Keys Directory
+
+First, create a directory to store certificates:
+
+```bash
+sudo mkdir /etc/asterisk/keys
+```
+
+### Generate CA and Server Certificate
+
+Asterisk provides the `ast_tls_cert` script for certificate generation. Create a self-signed Certificate Authority (CA) and Asterisk server certificate:
+
+```bash
+cd /usr/src/asterisk-15.7.1/contrib/scripts/
+sudo ./ast_tls_cert -C 192.168.1.180 -O "Tutorial Asterisk" -d /etc/asterisk/keys
+```
+
+**Parameters:**
+- `-C`: Your host (DNS name or IP address)
+- `-O`: Organization name
+- `-d`: Output directory for certificates
+
+You'll be prompted for a passphrase. Remember this phrase as you'll need it later.
+
+Verify certificate creation:
+
+```bash
+ls -l /etc/asterisk/keys/
+```
+
+### Generate Client Certificates
+
+Create certificates for SIP clients:
+
+```bash
+sudo ./ast_tls_cert -m client -c /etc/asterisk/keys/ca.crt -k /etc/asterisk/keys/ca.key -C 192.168.1.180 -O "Tutorial Asterisk" -d /etc/asterisk/keys -o javier
+```
+
+**Parameters:**
+- `-m client`: Indicates a client certificate (not server)
+- `-c`: Certificate Authority to use
+- `-k`: CA key for signing
+- `-C`: SIP phone hostname or IP address
+- `-O`: Organization name
+- `-d`: Output directory
+- `-o`: Certificate name
+
+Enter the passphrase you created earlier.
+
+Verify the client certificate:
+
+```bash
+ls -l /etc/asterisk/keys/
+```
+
+The files `javier.crt` and `javier.pem` must be copied to your SIP client.
+
+## Configuring Asterisk
+
+### Edit sip.conf
+
+Modify the SIP configuration to enable TLS:
+
+```bash
+sudo vim /etc/asterisk/sip.conf
+```
+
+Under the `[general]` context, add:
+
+```ini
+tlsenable=yes
+tlsbindaddr=0.0.0.0
+tlscertfile=/etc/asterisk/keys/asterisk.pem
+tlscafile=/etc/asterisk/keys/ca.crt
+tlscipher=ALL
+tlsclientmethod=tlsv1
+```
+
+For the user configuration (example with `javier`), add the `transport=tls` parameter:
+
+```ini
+[javier]
+type=friend
+secret=310195
+context=empleado
+host=dynamic
+canreinvite=no
+nat=force_rport,comedia
+callgroup=2
+pickupgroup=2
+transport=tls
+```
+
+Reload SIP configuration:
+
+```
+CLI> sip reload
+```
+
+## Verifying Configuration
+
+Check allowed transports for users:
+
+```
+CLI> sip show peer javier
+CLI> sip show peer belen
+```
+
+Users with certificates will show TLS transport, while users without certificates will use UDP.
+
+## Client Configuration
+
+### Using Blink SIP Client
+
+[Blink](http://icanblink.com/) is a recommended SIP client that supports TLS.
+
+**Configuration steps:**
+
+1. Open Blink and create a new account
+2. Enter your SIP credentials (username: javier, password: 310195)
+3. Set the server address (your Asterisk IP)
+4. In TLS settings, select the `javier.pem` certificate file
+5. Enable TLS transport
+
+### Verify TLS Connection
+
+Check active TLS connections:
+
+```
+CLI> sip show tcp
+```
+
+View peer status:
+
+```
+CLI> sip show peers
+```
+
+You should see the transport method listed as TLS for configured users.
+
+## Security Best Practices
+
+<Warning>
+- Keep your CA private key (`ca.key`) secure and backed up
+- Use strong passphrases for certificate generation
+- Regularly update certificates before expiration
+- Only distribute client certificates to authorized users
+</Warning>
+
+<Note>
+TLS encrypts signaling (call setup) but not the media (audio) itself. For complete encryption, consider implementing SRTP (Secure Real-time Transport Protocol) for media encryption.
+</Note>

@@ -1,0 +1,401 @@
+---
+title: "features.conf Reference"
+description: "Complete reference for Asterisk call features configuration"
+---
+
+## Overview
+
+The `features.conf` file configures in-call features such as call parking, transfers, call pickup, and other feature codes that users can activate during active calls.
+
+## File Location
+
+```
+/etc/asterisk/features.conf
+```
+
+## Configuration Structure
+
+- `[general]` - General feature settings
+- `[featuremap]` - Feature activation codes
+- `[applicationmap]` - Custom feature bindings
+- `[parkinglot]` - Call parking configuration
+
+## [general] Section
+
+### Transfer Settings
+
+<ParamField path="transferdigittimeout" type="integer" default="3">
+  Seconds to wait for next digit when transferring (in seconds)
+</ParamField>
+
+<ParamField path="atxfernoanswertimeout" type="integer" default="15">
+  Timeout for attended transfer if no answer (in seconds)
+</ParamField>
+
+<ParamField path="atxferdropcall" type="boolean" default="no">
+  If attended transfer fails, drop call instead of returning to transferrer
+</ParamField>
+
+<ParamField path="atxferloopdelay" type="integer" default="10">
+  Delay before reconnecting to transferrer if transfer target doesn't answer (in seconds)
+</ParamField>
+
+<ParamField path="courtesytone" type="string">
+  Sound file to play to transferee before transfer completes (e.g., `beep`)
+</ParamField>
+
+### Parking Settings
+
+<ParamField path="parkext" type="string" default="700">
+  Extension to dial to park a call
+</ParamField>
+
+<ParamField path="parkpos" type="string" default="701-720">
+  Range of parking positions available
+</ParamField>
+
+<ParamField path="context" type="string" default="parkedcalls">
+  Context for parked calls
+</ParamField>
+
+<ParamField path="parkingtime" type="integer" default="45">
+  Seconds a call can be parked before timing out (in seconds)
+</ParamField>
+
+<ParamField path="comebacktoorigin" type="boolean" default="yes">
+  Return parked call to original parker if timeout occurs
+</ParamField>
+
+<ParamField path="parkedplay" type="string" default="caller">
+  Who to announce parking position to: `caller`, `parker`, `both`, `no`
+</ParamField>
+
+<ParamField path="adsipark" type="boolean" default="no">
+  Enable ADSI parking announcements
+</ParamField>
+
+<ParamField path="findslot" type="string" default="first">
+  Parking slot selection: `first` or `next`
+</ParamField>
+
+### Pickup Settings
+
+<ParamField path="pickupexten" type="string" default="*8">
+  Extension to dial to pick up a ringing call in your pickup group
+</ParamField>
+
+<ParamField path="pickupsound" type="string">
+  Sound to play when picking up a call
+</ParamField>
+
+<ParamField path="pickupfailsound" type="string">
+  Sound to play when pickup fails
+</ParamField>
+
+### Feature Recording
+
+<ParamField path="featuredigittimeout" type="integer" default="1000">
+  Milliseconds to wait for next feature digit (in milliseconds)
+</ParamField>
+
+<ParamField path="atxferabort" type="string" default="*1">
+  Code to abort an attended transfer
+</ParamField>
+
+<ParamField path="atxfercomplete" type="string" default="*2">
+  Code to complete an attended transfer
+</ParamField>
+
+<ParamField path="atxferthreeway" type="string" default="*3">
+  Code to turn attended transfer into three-way call
+</ParamField>
+
+## [featuremap] Section
+
+Defines DTMF codes for activating features during calls:
+
+```ini
+[featuremap]
+blindxfer => #1        ; Blind transfer
+atxfer => *2           ; Attended transfer
+disconnect => *0       ; Disconnect call
+automon => *1          ; Auto-monitor (record)
+automixmon => *3       ; Auto-MixMonitor (record)
+parkcall => #72        ; Park call
+```
+
+### Common Feature Codes
+
+<ParamField path="blindxfer" type="string" default="#">
+  Blind/unsupervised transfer - transfer without announcing
+</ParamField>
+
+<ParamField path="atxfer" type="string" default="*2">
+  Attended/supervised transfer - announce before transferring
+</ParamField>
+
+<ParamField path="disconnect" type="string" default="*">
+  Disconnect/hangup current call
+</ParamField>
+
+<ParamField path="parkcall" type="string">
+  Park the call (alternative to parking extension)
+</ParamField>
+
+<ParamField path="automon" type="string">
+  Start/stop recording (Monitor application)
+</ParamField>
+
+<ParamField path="automixmon" type="string">
+  Start/stop recording (MixMonitor application)
+</ParamField>
+
+## [applicationmap] Section
+
+Define custom feature codes:
+
+```ini
+[applicationmap]
+unpauseMonitor => #1,self/callee,UnpauseMonitor
+pauseMonitor => #2,self/callee,PauseMonitor
+```
+
+Format: `featurename => code,context,application(args)`
+
+- **code** - DTMF sequence to activate
+- **context** - Where feature is available: `self`, `peer`, `caller`, `callee`
+- **application** - Dialplan application to execute
+
+## [parkinglot] Sections
+
+Define custom parking lots:
+
+```ini
+[parkinglot_default]
+context => parkedcalls
+parkext => 700
+parkpos => 701-720
+parkingtime => 45
+
+[parkinglot_executive]
+context => executive_park
+parkext => 800
+parkpos => 801-810
+parkingtime => 120
+```
+
+## Call Pickup Configuration
+
+### In extensions.conf
+
+Define pickup extensions:
+
+```ini
+[empleado]
+; Pickup extension - *8 + extension number
+exten => _*8.,1,NoOp(Picking up call to ${EXTEN:2})
+same => n,Pickup(${EXTEN:2})
+same => n,Hangup()
+```
+
+### In sip.conf
+
+Define call groups and pickup groups:
+
+```ini
+[javier]
+type=friend
+callgroup=2
+pickupgroup=2
+
+[belen]
+type=friend
+callgroup=2
+pickupgroup=2
+
+[director]
+type=friend
+callgroup=1
+pickupgroup=1,2    ; Can pick up from groups 1 and 2
+```
+
+### Pickup Methods
+
+**Directed Pickup** (pick up specific extension):
+```ini
+exten => _*8.,1,Pickup(${EXTEN:2})
+```
+
+**Group Pickup** (pick up from callgroup/pickupgroup):
+```ini
+exten => *8,1,PickUp()
+```
+
+**Cross-context Pickup**:
+```ini
+exten => _*8.,1,Pickup(${EXTEN:2}@othercontext)
+```
+
+## Example Configurations
+
+### Basic Configuration
+
+```ini
+[general]
+transferdigittimeout = 3
+atxfernoanswertimeout = 15
+atxferdropcall = no
+parkext => 700
+parkpos => 701-720
+context => parkedcalls
+parkingtime => 45
+
+[featuremap]
+blindxfer => #1
+atxfer => *2
+disconnect => *0
+parkcall => #72
+```
+
+### With Call Recording
+
+```ini
+[general]
+transferdigittimeout = 3
+atxfernoanswertimeout = 15
+
+[featuremap]
+blindxfer => #1
+atxfer => *2
+automixmon => *1       ; Press *1 to start/stop recording
+disconnect => *0
+```
+
+### Custom Features
+
+```ini
+[general]
+transferdigittimeout = 3
+
+[featuremap]
+blindxfer => #1
+atxfer => *2
+
+[applicationmap]
+; Press *5 to toggle mute
+togglemute => *5,self,MuteAudio(toggle)
+; Press *6 to play a message
+playmsg => *6,self,Playback(custom-message)
+```
+
+### Multiple Parking Lots
+
+```ini
+[general]
+
+[parkinglot_default]
+context => parkedcalls
+parkext => 700
+parkpos => 701-720
+parkingtime => 45
+comebacktoorigin => yes
+
+[parkinglot_vip]
+context => parkedcalls_vip
+parkext => 800
+parkpos => 801-810
+parkingtime => 300      ; 5 minutes for VIP calls
+comebacktoorigin => yes
+```
+
+## Using Features
+
+### Blind Transfer
+
+1. During a call, press `#1` (or configured code)
+2. Dial the extension to transfer to
+3. Hang up - call is immediately transferred
+
+### Attended Transfer
+
+1. During a call, press `*2` (or configured code)
+2. Dial the extension to transfer to
+3. Announce the call
+4. Hang up to complete transfer
+
+Or:
+- Press `*1` to abort transfer
+- Press `*2` to complete transfer without hanging up
+- Press `*3` to create a three-way call
+
+### Call Parking
+
+**To park a call:**
+1. During a call, press `#72` or transfer to extension `700`
+2. System announces parking position (e.g., "701")
+3. Hang up
+
+**To retrieve parked call:**
+1. Dial the parking position (e.g., `701`)
+
+### Call Pickup
+
+**Direct pickup:**
+- Dial `*8` + extension number (e.g., `*84000` to pick up call to extension 4000)
+
+**Group pickup:**
+- Dial `*8` to pick up any ringing call in your pickup group
+
+## Default Feature Codes
+
+Common default codes in Asterisk:
+
+| Feature | Code | Description |
+|---------|------|-------------|
+| Blind Transfer | `#` | Transfer without announcement |
+| Attended Transfer | `*2` | Transfer with announcement |
+| Disconnect | `*` | Hangup call |
+| Park Call | `700` | Park call (dial extension) |
+| Retrieve Parked | `701-720` | Retrieve from parking position |
+| Call Pickup | `*8` | Pick up ringing call |
+| Record Toggle | `*1` | Start/stop recording |
+
+<Note>
+  Codes can be customized in `features.conf` to match your organization's preferences
+</Note>
+
+## Enabling Features in Dial()
+
+Enable features for specific calls using Dial() options:
+
+```ini
+; Enable all features
+exten => 4000,1,Dial(SIP/javier,20,tT)
+
+; Options:
+; t - Allow transferee to transfer
+; T - Allow transferrer to transfer
+; w - Allow callee to park call
+; W - Allow caller to park call
+; k - Allow callee to park call via DTMF
+; K - Allow caller to park call via DTMF
+```
+
+## Applying Changes
+
+After modifying `features.conf`, reload features:
+
+```bash
+asterisk -rx "features reload"
+```
+
+Or from the Asterisk CLI:
+
+```
+asterisk> features reload
+```
+
+## See Also
+
+- [extensions.conf](/config/extensions-conf) - Dialplan configuration
+- [sip.conf](/config/sip-conf) - SIP channel configuration (for callgroup/pickupgroup)

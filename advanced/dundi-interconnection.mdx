@@ -1,0 +1,219 @@
+---
+title: DUNDi PBX Interconnection
+description: Connect two Asterisk PBX systems using the DUNDi protocol for distributed dial plan sharing
+---
+
+## What is DUNDi?
+
+DUNDi (Distributed Universal Number Discovery) is a VoIP routing protocol designed for sharing dial plans between two or more Asterisk PBX systems. It's similar to ENUM but specifically designed for inter-PBX communication.
+
+### Key Features
+
+- **Distributed dial plan sharing**: Share extension information across multiple PBX systems
+- **Secure communication**: Uses RSA public/private key pairs for authentication
+- **SIP transport**: Actual calls are made using the SIP protocol
+- **Peer-to-peer architecture**: Systems communicate directly without a central server
+
+## Use Cases
+
+### Multi-Location Organizations
+
+Connect PBX systems across different office locations, allowing employees to call colleagues at other sites using simple extension numbers rather than external phone numbers.
+
+### Business Partnerships
+
+Enable direct extension dialing between partner organizations without going through the public telephone network.
+
+### Branch Office Integration
+
+Unify communication across headquarters and branch offices, creating a seamless internal phone system.
+
+## Configuration Overview
+
+Connecting two Asterisk PBX systems using DUNDi involves several configuration steps:
+
+### 1. Generate Key Pairs
+
+Each PBX needs its own RSA key pair for secure communication:
+
+```bash
+$ cd /var/lib/asterisk/keys
+$ sudo astgenkey -n PBX180
+```
+
+This creates:
+- `PBX180.key` - Private key (keep secure)
+- `PBX180.pub` - Public key (share with peer)
+
+### 2. Exchange Public Keys
+
+Copy your public key to the peer PBX and receive their public key:
+
+```bash
+$ sudo scp PBX180.pub user@192.168.1.200:/var/lib/asterisk/keys
+```
+
+### 3. Configure dundi.conf
+
+Set up the DUNDi configuration on each PBX:
+
+```ini
+[general]
+ttl=32
+autokill=yes
+
+[mappings]
+priv => dundi-priv-canonical,0,SIP,192.168.1.180/${NUMBER},nopartial
+priv => dundi-priv-customers,100,SIP,192.168.1.180/${NUMBER},nopartial
+priv => dundi-priv-via-pstn,400,SIP,192.168.1.180/${NUMBER},nopartial
+
+[00:0C:29:52:7C:20] ;MAC address of peer PBX
+model = symmetric
+host = 192.168.1.200 ;IP of peer PBX
+inkey = PBX200 ;Public key from peer
+outkey = PBX180 ;Your private key
+include = priv
+permit = priv
+qualify = yes
+order = primary
+```
+
+**Important**: Replace the MAC address with your peer's actual MAC address (found using `ip a`).
+
+### 4. Configure extensions.conf
+
+Add DUNDi contexts to your dial plan:
+
+```ini
+[dundi-priv-canonical]
+exten => _4XXX,1,Dial(Zap/g1/${EXTEN},20,rtT)
+
+[dundi-priv-customers]
+
+[dundi-priv-via-pstn]
+
+[dundi-priv-local]
+include => dundi-priv-canonical
+include => dundi-priv-customers
+include => dundi-priv-via-pstn
+
+[dundi-priv-switch]
+switch => DUNDi/priv
+
+[dundi-priv-lookup]
+include => dundi-priv-local
+include => dundi-priv-switch
+
+[macro-dundi-priv]
+exten => s,1,NoOp(Macro dundi-priv)
+same => n,Goto(${ARG1},1)
+include => dundi-priv-lookup
+```
+
+Then in your employee context, add the ability to dial extensions on the peer PBX:
+
+```ini
+[empleado]
+;Connection to peer PBX via DUNDi
+exten => _99999XXXX,1,NoOp(Calling ${EXTEN} - ${EXTEN:5})
+same => n,Macro(dundi-priv,${EXTEN:5})
+```
+
+This allows users to dial `99999` + extension number to reach users on the peer PBX.
+
+### 5. Configure sip.conf
+
+Add a peer definition for DUNDi connections:
+
+```ini
+[priv]
+type=peer
+context=dundi-priv-local
+disallow=all
+allow=ilbc
+```
+
+### 6. Reload Modules
+
+After configuration, reload the necessary modules:
+
+```
+CLI> dialplan reload
+CLI> sip reload
+CLI> module reload pbx_dundi.so
+CLI> module reload res_crypto.so
+```
+
+## Testing the Connection
+
+### Verify Keys Are Loaded
+
+```
+CLI> keys show
+```
+
+You should see both your private key and the peer's public key listed.
+
+### Verify DUNDi Peers
+
+```
+CLI> dundi show peers
+```
+
+This should show your peer with a status indicating connectivity.
+
+### Test Extension Lookup
+
+Test if you can resolve extensions on the peer PBX:
+
+```
+CLI> dundi lookup 2000@priv bypass
+```
+
+This should return the SIP information for extension 2000 on the peer system.
+
+### Make a Test Call
+
+From a phone registered to PBX180, dial `999992000` (if 2000 is an extension on PBX200). The call should be routed through DUNDi to the peer PBX.
+
+## Architecture Example
+
+**PBX180** (192.168.1.180)
+- Extensions: 4000-4999
+- Users: javier (4000), belen (4001)
+
+**PBX200** (192.168.1.200)
+- Extensions: 2000-2999
+- Users: manuel (2000), maria (2001)
+
+With DUNDi configured:
+- Users on PBX180 can call PBX200 users by dialing 999992000, 999992001, etc.
+- Users on PBX200 can call PBX180 users by dialing 999994000, 999994001, etc.
+
+## Security Considerations
+
+- **Keep private keys secure**: Never share your `.key` files
+- **Use strong passwords**: If you set passwords on keys (recommended for production)
+- **Firewall rules**: Only allow DUNDi traffic from trusted peer IP addresses
+- **Regular key rotation**: Consider rotating keys periodically for enhanced security
+
+## Troubleshooting
+
+### Peer Shows as Unavailable
+
+- Verify network connectivity between PBXs
+- Check firewall rules (DUNDi uses UDP port 4520)
+- Confirm MAC addresses are correct in configuration
+- Ensure public keys are properly exchanged
+
+### Calls Not Connecting
+
+- Verify SIP configuration allows calls from peer
+- Check dial plan includes DUNDi lookup contexts
+- Test with `dundi lookup` command first
+- Review Asterisk logs for error messages
+
+## Related Topics
+
+- [Call Center Implementation](/advanced/call-center-example)
+- [Troubleshooting Common Issues](/reference/troubleshooting)

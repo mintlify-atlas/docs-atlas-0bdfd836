@@ -1,0 +1,268 @@
+---
+title: 'Testing the Installation'
+description: 'Verify your Asterisk installation by creating test users and making calls'
+---
+
+## Overview
+
+After installing and configuring Asterisk, it's important to verify everything works correctly. This guide walks through creating test users and making a simple call between two softphones.
+
+## Softphones Required
+
+You'll need two SIP softphones to test. This tutorial uses:
+
+- **Pangolin** - Desktop softphone for PC
+- **Zoiper** - Mobile softphone for Android/iOS
+
+You can use any SIP-compatible softphones, including:
+- Linphone
+- X-Lite
+- MicroSIP
+- Jitsi
+
+## Create Test Users in sip.conf
+
+Edit the SIP configuration file:
+
+```bash
+sudo vim /etc/asterisk/sip.conf
+```
+
+Add the following configuration:
+
+```ini /etc/asterisk/sip.conf
+[general]
+port=5060
+directmedia=no
+language=es
+context=public
+
+[javier]
+type=friend
+secret=12345678
+context=empleado
+host=dynamic
+canreinvite=no
+nat=force_report
+
+[belen]
+type=friend
+secret=12345678
+context=empleado
+host=dynamic
+canreinvite=no
+nat=force_rport,comedia
+```
+
+### Configuration Explained
+
+#### General Section
+
+- **`port=5060`** - SIP port for connections
+- **`directmedia=no`** - Forces RTP media through Asterisk (many devices don't support direct media)
+- **`language=es`** - Default language for prompts
+- **`context=public`** - Default context for incoming calls
+
+#### User Sections
+
+- **`type=friend`** - Allows both sending and receiving calls
+- **`secret=12345678`** - Password for authentication
+- **`context=empleado`** - Dialplan context for this user
+- **`host=dynamic`** - User registers with Asterisk (dynamic IP)
+- **`canreinvite=no`** - Prevents re-INVITE messages after call establishment
+- **`nat=force_rport,comedia`** - NAT traversal settings for RFC3581 compliance and symmetric RTP
+
+<Warning>
+  In production environments, use strong passwords instead of simple ones like "12345678".
+</Warning>
+
+## Create Extensions in extensions.conf
+
+Edit the dialplan configuration:
+
+```bash
+sudo vim /etc/asterisk/extensions.conf
+```
+
+Add the `empleado` context:
+
+```ini /etc/asterisk/extensions.conf
+[empleado]
+exten => 4000,1,Dial(SIP/javier)
+exten => 4001,1,Dial(SIP/belen)
+```
+
+This configuration:
+- Assigns extension **4000** to user **javier**
+- Assigns extension **4001** to user **belen**
+- When someone dials 4000, Asterisk calls the SIP device registered as "javier"
+
+## Reload Asterisk Configuration
+
+Access the Asterisk CLI and reload the configurations:
+
+<Steps>
+  <Step title="Connect to CLI">
+    ```bash
+    sudo asterisk -rvvvvvvc
+    ```
+  </Step>
+  
+  <Step title="Reload dialplan">
+    ```
+    CLI> dialplan reload
+    ```
+  </Step>
+  
+  <Step title="Reload SIP">
+    ```
+    CLI> sip reload
+    ```
+  </Step>
+</Steps>
+
+## Configure Softphones
+
+### Pangolin Configuration (Belen)
+
+Configure Pangolin with the following settings:
+
+- **Server/Domain**: Your Asterisk server IP address
+- **Username**: `belen`
+- **Password**: `12345678`
+- **Port**: `5060`
+
+### Zoiper Configuration (Javier)
+
+Configure Zoiper with:
+
+- **Server/Domain**: Your Asterisk server IP address  
+- **Username**: `javier`
+- **Password**: `12345678`
+- **Port**: `5060`
+
+<Warning>
+  Ensure both softphones can reach the Asterisk server over the network. Check firewall rules if connections fail.
+</Warning>
+
+## Verify Registration
+
+In the Asterisk CLI, check that both users are registered:
+
+```
+CLI> sip show peers
+```
+
+You should see output like:
+
+```
+Name/username             Host                Dyn Forcerport Comedia ACL Port     Status    
+javier/javier             192.168.1.100        D  Yes        No          5060     OK (1 ms)
+belen/belen               192.168.1.101        D  Yes        Yes         5060     OK (2 ms)
+```
+
+**Status "OK"** indicates successful registration.
+
+## Make a Test Call
+
+<Steps>
+  <Step title="Initiate call from Javier">
+    On the Javier (Zoiper) softphone, dial **4001** to call Belen.
+  </Step>
+  
+  <Step title="Answer on Belen">
+    The Belen (Pangolin) softphone should ring. Answer the call.
+  </Step>
+  
+  <Step title="Test audio">
+    Speak on both ends to verify two-way audio is working.
+  </Step>
+  
+  <Step title="End the call">
+    Hang up from either softphone.
+  </Step>
+</Steps>
+
+## Monitor Calls in CLI
+
+While the call is active, you can monitor it in the Asterisk CLI:
+
+```
+CLI> core show channels
+```
+
+This displays active channels and call information.
+
+You'll also see verbose output in the CLI showing:
+- Call setup (INVITE, TRYING, RINGING)
+- Call answer (OK, ACK)
+- Media negotiation (RTP)
+- Call hangup (BYE)
+
+## Troubleshooting
+
+### Users Not Registering
+
+1. Check softphone configuration (username, password, server IP)
+2. Verify firewall allows UDP port 5060
+3. Check Asterisk logs: `tail -f /var/log/asterisk/messages`
+4. Verify SIP configuration: `CLI> sip show peers`
+
+### No Audio During Call
+
+1. Check firewall allows RTP ports (typically 10000-20000 UDP)
+2. Verify `directmedia=no` is set in sip.conf
+3. Check NAT settings in softphone configuration
+4. Enable verbose logging: `CLI> core set verbose 10`
+
+### Call Not Connecting
+
+1. Verify dialplan: `CLI> dialplan show empleado`
+2. Check context matches between sip.conf and extensions.conf
+3. Review CLI output for error messages
+4. Ensure both users are registered
+
+### Extensions Not Working
+
+Verify the dialplan was loaded:
+
+```
+CLI> dialplan show empleado
+```
+
+You should see:
+
+```
+[ Context 'empleado' created by 'pbx_config' ]
+  '4000' =>         1. Dial(SIP/javier)                     [pbx_config]
+  '4001' =>         1. Dial(SIP/belen)                      [pbx_config]
+```
+
+## Call Flow Example
+
+Here's what happens when Javier (4000) calls Belen (4001):
+
+1. Javier dials 4001 on his softphone
+2. Zoiper sends SIP INVITE to Asterisk
+3. Asterisk looks up extension 4001 in the "empleado" context
+4. Asterisk finds `Dial(SIP/belen)` instruction
+5. Asterisk sends INVITE to Belen's registered device
+6. Pangolin rings on Belen's PC
+7. Belen answers, establishing the call
+8. RTP audio flows (through Asterisk because `directmedia=no`)
+9. Either party hangs up, ending the call
+
+## Next Steps
+
+Congratulations! Your Asterisk installation is working correctly. You can now:
+
+- Add more users to sip.conf
+- Create more complex dialplans
+- Configure voicemail
+- Set up IVR menus
+- Integrate with external SIP trunks
+- Explore advanced features
+
+<Warning>
+  These test configurations use simple settings suitable for learning. Production deployments require additional security measures like encryption (TLS/SRTP), strong authentication, and firewall rules.
+</Warning>

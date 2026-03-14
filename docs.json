@@ -1,122 +1,116 @@
 {
   "$schema": "https://mintlify.com/docs.json",
-  "theme": "mint",
-  "name": "Mint Starter Kit",
+  "name": "Asterisk Tutorial",
+  "theme": "linden",
   "colors": {
-    "primary": "#16A34A",
-    "light": "#07C983",
-    "dark": "#15803D"
+    "primary": "#ee7924",
+    "light": "#8e7a69",
+    "dark": "#dcd5cc"
   },
-  "favicon": "/favicon.svg",
+  "favicon": "https://media.brand.dev/eed85148-3b3e-4232-b9b5-3c1b07e0137c.jpg",
+  "logo": {
+    "light": "https://media.brand.dev/d10a8b80-2165-4166-920a-692ae7fec06b.png",
+    "dark": "https://media.brand.dev/d10a8b80-2165-4166-920a-692ae7fec06b.png"
+  },
+  "navbar": {
+    "primary": {
+      "type": "github",
+      "href": "https://github.com/javierorp/Asterisk_Tutorial"
+    }
+  },
+  "footer": {
+    "socials": {
+      "github": "https://github.com/javierorp/Asterisk_Tutorial"
+    }
+  },
   "navigation": {
     "tabs": [
       {
-        "tab": "Guides",
+        "tab": "Documentation",
         "groups": [
           {
-            "group": "Getting started",
+            "group": "Get Started",
             "pages": [
-              "index",
-              "quickstart",
-              "development"
+              "introduction",
+              "technical-specs"
             ]
           },
           {
-            "group": "Customization",
+            "group": "Setup",
             "pages": [
-              "essentials/settings",
-              "essentials/navigation"
+              "setup/ssh-connection",
+              "setup/static-ip",
+              "setup/openssh"
             ]
           },
           {
-            "group": "Writing content",
+            "group": "Installation",
             "pages": [
-              "essentials/markdown",
-              "essentials/code",
-              "essentials/images",
-              "essentials/reusable-snippets"
+              "installation/asterisk-installation",
+              "installation/dependencies",
+              "installation/user-creation",
+              "installation/starting-asterisk",
+              "installation/language-configuration",
+              "installation/testing"
             ]
           },
           {
-            "group": "AI tools",
+            "group": "PBX Features",
             "pages": [
-              "ai-tools/cursor",
-              "ai-tools/claude-code",
-              "ai-tools/windsurf"
+              "features/voicemail",
+              "features/call-transfer",
+              "features/sip-messaging",
+              "features/group-calls",
+              "features/call-pickup",
+              "features/text-to-speech",
+              "features/call-security",
+              "features/external-calls",
+              "features/business-hours",
+              "features/logging",
+              "features/queue-distribution"
+            ]
+          },
+          {
+            "group": "Database Integration",
+            "pages": [
+              "database/mariadb-installation",
+              "database/odbc-connector",
+              "database/asterisk-connection",
+              "database/testing-connection"
+            ]
+          },
+          {
+            "group": "Advanced",
+            "pages": [
+              "advanced/dundi-interconnection",
+              "advanced/call-center-example"
+            ]
+          },
+          {
+            "group": "Reference",
+            "pages": [
+              "reference/softphones",
+              "reference/troubleshooting",
+              "reference/useful-links"
             ]
           }
         ]
       },
       {
-        "tab": "API reference",
+        "tab": "Configuration",
         "groups": [
           {
-            "group": "API documentation",
+            "group": "Configuration Files",
             "pages": [
-              "api-reference/introduction"
-            ]
-          },
-          {
-            "group": "Endpoint examples",
-            "pages": [
-              "api-reference/endpoint/get",
-              "api-reference/endpoint/create",
-              "api-reference/endpoint/delete",
-              "api-reference/endpoint/webhook"
+              "config/sip-conf",
+              "config/extensions-conf",
+              "config/voicemail-conf",
+              "config/features-conf",
+              "config/logger-conf"
             ]
           }
         ]
       }
-    ],
-    "global": {
-      "anchors": [
-        {
-          "anchor": "Documentation",
-          "href": "https://mintlify.com/docs",
-          "icon": "book-open-cover"
-        },
-        {
-          "anchor": "Blog",
-          "href": "https://mintlify.com/blog",
-          "icon": "newspaper"
-        }
-      ]
-    }
-  },
-  "logo": {
-    "light": "/logo/light.svg",
-    "dark": "/logo/dark.svg"
-  },
-  "navbar": {
-    "links": [
-      {
-        "label": "Support",
-        "href": "mailto:hi@mintlify.com"
-      }
-    ],
-    "primary": {
-      "type": "button",
-      "label": "Dashboard",
-      "href": "https://dashboard.mintlify.com"
-    }
-  },
-  "contextual": {
-    "options": [
-     "copy",
-     "view",
-     "chatgpt",
-     "claude",
-     "perplexity",
-     "mcp",
-     "cursor",
-     "vscode"
-   ]
-  },
-  "footer": {
-    "socials": {
-      "x": "https://x.com/mintlify",
-      "github": "https://github.com/mintlify",
-      "linkedin": "https://linkedin.com/company/mintlify"
-    }
+    ]
   }
 }

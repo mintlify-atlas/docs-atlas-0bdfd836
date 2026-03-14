@@ -1,0 +1,115 @@
+---
+title: Static IP Configuration
+description: Configure a static IP address for your Asterisk server
+---
+
+Assigning a static IP address to your server ensures consistent network connectivity and makes SSH access more convenient.
+
+## Check Current IP Address
+
+Before configuring a static IP, check the current IP address assigned to your network interface (typically `ens33`):
+
+```bash
+ip address
+```
+
+This command displays all network interfaces and their current IP addresses.
+
+## Configure Static IP
+
+<Steps>
+  <Step title="Edit network interfaces file">
+    Open the network interfaces configuration file:
+    
+    ```bash
+    sudo vim /etc/network/interfaces
+    ```
+  </Step>
+
+  <Step title="Configure static IP settings">
+    Modify the file to set a static IP configuration. Replace the DHCP configuration with static settings:
+    
+    ```bash
+    # This file describes the network interfaces available on your system
+    # and how to activate them. For more information, see interfaces(5).
+
+    source /etc/network/interfaces.d/*
+
+    # The loopback network interface
+    auto lo
+    iface lo inet loopback
+
+    # The primary network interface
+    allow-hotplug ens33
+    iface ens33 inet static
+        address 192.168.1.200
+        gateway 192.168.1.1
+    ```
+    
+    <Warning>
+      Pay attention to indentation. The `address` and `gateway` lines should be indented with 4 spaces.
+    </Warning>
+  </Step>
+
+  <Step title="Configure DNS servers">
+    Configure DNS servers to avoid issues when downloading packages. Edit the DNS resolver configuration:
+    
+    ```bash
+    sudo vim /etc/resolv.conf
+    ```
+    
+    Add Google DNS (8.8.8.8) and Cloudflare DNS (1.1.1.1):
+    
+    ```bash
+    nameserver 8.8.8.8
+    nameserver 1.1.1.1
+    ```
+  </Step>
+
+  <Step title="Restart networking service">
+    Restart the networking service to apply changes:
+    
+    ```bash
+    sudo systemctl restart networking
+    ```
+    
+    Then reboot the system:
+    
+    ```bash
+    sudo reboot
+    ```
+  </Step>
+
+  <Step title="Verify configuration">
+    After reboot, verify that the static IP has been assigned correctly:
+    
+    ```bash
+    ip address
+    ```
+    
+    Test network connectivity and DNS resolution:
+    
+    ```bash
+    ping -c3 www.debian.org
+    ```
+    
+    If you receive responses, your network configuration is working correctly.
+  </Step>
+</Steps>
+
+## Configuration Summary
+
+| Setting | Value |
+|---------|-------|
+| Interface | ens33 |
+| IP Address | 192.168.1.200 |
+| Gateway | 192.168.1.1 |
+| DNS Servers | 8.8.8.8, 1.1.1.1 |
+
+## Next Steps
+
+With your static IP configured, you can now proceed to install and configure OpenSSH for remote access.
+
+<Card title="Install OpenSSH" icon="key" href="/setup/openssh">
+  Set up SSH server for remote access
+</Card>

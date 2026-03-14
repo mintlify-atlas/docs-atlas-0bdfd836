@@ -1,0 +1,69 @@
+---
+title: 'Asterisk Installation Overview'
+description: 'Complete guide to installing and configuring Asterisk 15.7.1 PBX system'
+---
+
+## Introduction
+
+This section provides a comprehensive guide to installing Asterisk 15.7.1 on a Linux system. Asterisk is a powerful open-source PBX (Private Branch Exchange) system that enables voice communication over IP networks.
+
+## Installation Process
+
+The installation process consists of several key steps:
+
+<Steps>
+  <Step title="Install Dependencies">
+    Update your system and install required packages including wget, build-essential, and subversion.
+  </Step>
+  
+  <Step title="Download and Compile Asterisk">
+    Download Asterisk 15.7.1 source code, configure, compile, and install the software.
+  </Step>
+  
+  <Step title="Create Asterisk User">
+    Set up a dedicated system user for running Asterisk securely.
+  </Step>
+  
+  <Step title="Start the Service">
+    Initialize Asterisk service and configure it to start on boot.
+  </Step>
+  
+  <Step title="Configure Language">
+    Install Spanish language packs and configure Asterisk to use them.
+  </Step>
+  
+  <Step title="Test Installation">
+    Verify the installation by creating test users and making calls.
+  </Step>
+</Steps>
+
+## What You'll Need
+
+Before beginning the installation, ensure you have:
+
+- A Linux system with sudo privileges
+- Internet connection for downloading packages
+- At least 2GB of disk space
+- Basic familiarity with command line operations
+
+## Key Files and Directories
+
+During installation, you'll work with several important locations:
+
+- **`/usr/src/asterisk-15.7.1/`** - Source code directory
+- **`/etc/asterisk/`** - Configuration files
+- **`/var/lib/asterisk/`** - Runtime data and sound files
+- **`/var/log/asterisk/`** - Log files
+- **`/var/spool/asterisk/`** - Spool directory for voicemail and recordings
+
+## Version Information
+
+This tutorial uses **Asterisk 15.7.1**, which is a stable Long Term Support (LTS) release. While newer versions are available, this version is recommended for learning the fundamentals.
+
+<Warning>
+  Ensure your system is backed up before beginning the installation process. Installing and configuring Asterisk requires system-level changes.
+</Warning>
+
+## Next Steps
+
+Ready to begin? Start with [installing dependencies](/installation/dependencies) to prepare your system for Asterisk.

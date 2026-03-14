@@ -1,0 +1,105 @@
+---
+title: Introduction
+description: Getting started with Asterisk PBX installation and configuration
+---
+
+## What is Asterisk PBX?
+
+Asterisk is an open-source [Private Branch Exchange (PBX)](https://en.wikipedia.org/wiki/Business_telephone_system#Private_branch_exchange) framework that enables you to build communications applications. It provides a complete telephony system that can handle voice calls, video calls, messaging, and more.
+
+This tutorial was developed as part of a university project and has been shared to help others learn how to configure Asterisk from scratch.
+
+<Note>
+This is a beginner-friendly guide. While there may be multiple ways to configure Asterisk, this tutorial provides a solid foundation for understanding the core concepts.
+</Note>
+
+## Purpose of This Tutorial
+
+This tutorial guides you through:
+
+- Installing and configuring Asterisk on Debian
+- Setting up basic PBX functionality
+- Implementing advanced features (voicemail, call distribution, queues)
+- Integrating Asterisk with MariaDB
+- Building a complete Call Center simulation
+
+The tutorial is structured in small modules to make it easier to understand concepts and test each integration step by step.
+
+## Tutorial Structure
+
+The tutorial is organized into the following main sections:
+
+<Steps>
+  <Step title="SSH Connection">
+    Set up remote access to your Asterisk server with static IP configuration
+  </Step>
+  
+  <Step title="Asterisk Installation">
+    Install Asterisk and its dependencies, configure basic settings
+  </Step>
+  
+  <Step title="PBX Functionality">
+    Implement core features like voicemail, call forwarding, messaging, and call distribution
+  </Step>
+  
+  <Step title="Database Integration">
+    Connect Asterisk with MariaDB for advanced data management
+  </Step>
+  
+  <Step title="PBX Interconnection">
+    Set up DUNDi module for connecting multiple PBX systems
+  </Step>
+  
+  <Step title="Call Center">
+    Build a complete Call Center simulation with all previously learned features
+  </Step>
+</Steps>
+
+## Nomenclature
+
+Throughout this tutorial, commands are prefixed with specific symbols to indicate where they should be executed:
+
+<CodeGroup>
+```bash $ - Linux Terminal
+$ [command]
+```
+
+```vim : - Vim Editor
+: [command]
+```
+
+```asterisk CLI> - Asterisk Console
+CLI> [command]
+```
+
+```sql MariaDB> - MariaDB Database
+MariaDB> [command]
+```
+</CodeGroup>
+
+<Info>
+**Command Prefix Guide:**
+- **$** (dollar sign) - Linux terminal commands
+- **:** (colon) - Vim editor commands
+- **CLI>** - Asterisk CLI (Command Line Interface)
+- **MariaDB>** - MariaDB database console
+- **Quoted text** - Plain text content for configuration files
+</Info>
+
+## Reference Files
+
+All original, unmodified configuration files referenced in this tutorial are available in the source repository at:
+
+`code/0_originales/`
+
+These files serve as reference points before any modifications are made during the tutorial.
+
+## Additional Resources
+
+- [Asterisk Official Website](https://www.asterisk.org/)
+- [Debian Documentation](https://www.debian.org/)
+- Links of interest section (see tutorial navigation)
+
+<Note>
+If you encounter any errors, have questions, or suggestions, please refer to the contact information or community resources provided in the tutorial.
+</Note>

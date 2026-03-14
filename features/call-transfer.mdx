@@ -1,0 +1,148 @@
+---
+title: 'Call Transfer and Redirection'
+description: 'Configure call transfer functionality and custom audio playback in Asterisk'
+---
+
+## Overview
+
+Call transfer and redirection functionality depends on the softphone client being used. To demonstrate this feature, we'll create a test extension that plays custom audio, which can be used as a transfer destination.
+
+## Adding Custom Music
+
+### Convert Audio to Asterisk Format
+
+Asterisk works best with audio in the `sln16` format. Convert MP3 files using the `sox` tool:
+
+```bash
+sox file.mp3 --type raw --encoding signed-integer --bits 16 --channels 1 --rate 16k file.sln16
+```
+
+**Parameters explained:**
+- `--type raw`: Output raw audio data
+- `--encoding signed-integer`: Use signed integer encoding
+- `--bits 16`: 16-bit audio depth
+- `--channels 1`: Mono audio
+- `--rate 16k`: 16kHz sample rate
+
+### Transfer Audio Files to Server
+
+If the audio files aren't already on the Asterisk server, use SFTP to transfer them. **FileZilla** is a popular graphical SFTP client.
+
+**FileZilla configuration:**
+1. Host: Your Asterisk server IP
+2. Protocol: SFTP
+3. Username/Password: Your server credentials
+4. Connect and navigate to `/var/lib/asterisk/sounds/es/`
+
+**Destination path:**
+```
+/var/lib/asterisk/sounds/es/[your_folder]/
+```
+
+<Tip>
+Create a custom folder (e.g., `mimusica`) to organize your custom audio files separately from system sounds.
+</Tip>
+
+## Configure Playback Extension
+
+### Modify extensions.conf
+
+Create a test extension that plays custom audio:
+
+```bash
+sudo vim /etc/asterisk/extensions.conf
+```
+
+**Add under the `[empleado]` context:**
+
+```ini
+exten => 100,1,NoOp(Centralita de distribucion de llamadas)
+same => n,Playback(silence/1)
+same => n,Playback(mimusica/primavera)
+same => n,Hangup()
+```
+
+### How It Works
+
+**Playback() function:**
+- Plays audio files from `/var/lib/asterisk/sounds/es/`
+- Uses relative paths from the sounds directory
+- `silence/1`: Plays 1 second of silence from `/es/silence/`
+- `mimusica/primavera`: Plays `primavera.sln16` from `/es/mimusica/`
+
+<Note>
+The `Playback()` function automatically appends the appropriate file extension, so you don't need to specify `.sln16` in the dialplan.
+</Note>
+
+### Reload Dialplan
+
+```
+CLI> dialplan reload
+```
+
+## Testing Call Transfer
+
+Call transfer functionality varies by softphone. Here's a general workflow:
+
+### Basic Transfer Steps
+
+1. **Initiate a call** between two extensions (e.g., Belen calls Javier)
+2. **Answer the call** on the receiving end
+3. **Press the Transfer button** on the transferring phone
+4. **Enter the target extension** (e.g., `100`)
+5. **Complete the transfer** (method varies by softphone)
+
+### Transfer in Different Softphones
+
+**Standard SIP phones:**
+- Press the "Transfer" button during an active call
+- Dial the target extension
+- Press "Transfer" again or hang up to complete
+
+**Blink softphone:**
+- Make a call to the transfer destination while on an active call
+- Hold `Alt` key and drag the session to transfer
+- Drop the session onto the target session to complete
+
+### Verification in Asterisk Console
+
+The Asterisk console will show:
+- Original call establishment
+- Transfer initiation
+- New call to transfer destination (extension 100)
+- Audio playback from the custom music file
+- Call termination
+
+## SFTP File Transfer with FileZilla
+
+### Connection Setup
+
+**Quick Connect bar:**
+- **Host:** sftp://your-asterisk-server
+- **Username:** Your SSH username  
+- **Password:** Your SSH password
+- **Port:** 22 (default SFTP port)
+
+### File Transfer Process
+
+1. **Left pane:** Your local computer files
+2. **Right pane:** Remote server files
+3. **Navigate** on the right to `/var/lib/asterisk/sounds/es/`
+4. **Create folder** for custom sounds (e.g., `mimusica`)
+5. **Drag and drop** `.sln16` files from left to right
+6. **Verify permissions** after upload
+
+<Warning>
+Ensure uploaded files have appropriate read permissions for the Asterisk user:
+```bash
+sudo chown asterisk:asterisk /var/lib/asterisk/sounds/es/mimusica/*
+sudo chmod 644 /var/lib/asterisk/sounds/es/mimusica/*
+```
+</Warning>
+
+## Use Cases
+
+- **Music on hold replacement:** Transfer callers to custom music
+- **Announcements:** Transfer to informational messages
+- **Queue pre-announcements:** Play information before entering a queue
+- **Testing audio quality:** Verify codec and audio path functionality

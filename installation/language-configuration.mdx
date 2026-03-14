@@ -1,0 +1,219 @@
+---
+title: 'Spanish Language Configuration'
+description: 'Install and configure Spanish language prompts for Asterisk'
+---
+
+## Overview
+
+By default, Asterisk includes English language prompts. This guide shows you how to install Spanish language files and configure Asterisk to use them.
+
+## Create Sounds Directory
+
+Sound files are stored in `/var/lib/asterisk/sounds/`. Create a subdirectory for Spanish:
+
+```bash
+mkdir /var/lib/asterisk/sounds/es
+```
+
+## Download Spanish Sound Files
+
+Navigate to the Spanish sounds directory:
+
+```bash
+cd /var/lib/asterisk/sounds/es
+```
+
+Download the core and extra sound packages:
+
+<Steps>
+  <Step title="Download core sounds">
+    ```bash
+    wget -O core.zip https://www.asterisksounds.org/es-es/download/asterisk-sounds-core-es-ES-sln16.zip
+    ```
+  </Step>
+  
+  <Step title="Download extra sounds">
+    ```bash
+    wget -O extra.zip https://www.asterisksounds.org/es-es/download/asterisk-sounds-extra-es-ES-sln16.zip
+    ```
+  </Step>
+  
+  <Step title="Extract the archives">
+    ```bash
+    unzip core.zip
+    unzip extra.zip
+    ```
+  </Step>
+  
+  <Step title="Set ownership">
+    ```bash
+    sudo chown -R asterisk.asterisk /var/lib/asterisk/sounds/es
+    ```
+  </Step>
+</Steps>
+
+## Convert Audio Formats
+
+The downloaded files are in SLN16 (16-bit signed linear) format. Asterisk needs multiple formats (GSM, A-law, μ-law) for optimal performance.
+
+### Install sox
+
+Install the Sound eXchange utility:
+
+```bash
+sudo apt-get install sox
+```
+
+### Create Conversion Script
+
+<Steps>
+  <Step title="Create script file">
+    ```bash
+    cd /var/lib/asterisk/sounds/es/
+    sudo vim convertir
+    ```
+  </Step>
+  
+  <Step title="Add script content">
+    ```bash
+    #!/bin/bash
+    for a in $(find . -name '*.sln16'); do
+      sox -t raw -e signed-integer -b 16 -c 1 -r 16k $a -t gsm -r 8k `echo $a|sed "s/.sln16/.gsm/"`;
+      sox -t raw -e signed-integer -b 16 -c 1 -r 16k $a -t raw -r 8k -e a-law `echo $a|sed "s/.sln16/.alaw/"`;
+      sox -t raw -e signed-integer -b 16 -c 1 -r 16k $a -t raw -r 8k -e mu-law `echo $a|sed "s/.sln16/.ulaw/"`;
+    done
+    ```
+  </Step>
+  
+  <Step title="Make executable">
+    ```bash
+    sudo chmod +x convertir
+    ```
+  </Step>
+  
+  <Step title="Run conversion">
+    ```bash
+    sudo ./convertir
+    ```
+    
+    This process may take several minutes depending on your system.
+  </Step>
+</Steps>
+
+<Warning>
+  Pay attention to indentation when copying the script. The spaces and tabs must be correct for the script to work properly.
+</Warning>
+
+## Configure SIP for Spanish
+
+Edit the SIP configuration file:
+
+```bash
+sudo vim /etc/asterisk/sip.conf
+```
+
+In the `[general]` section, add or modify:
+
+```ini
+[general]
+language=es
+```
+
+This sets Spanish as the default language for all SIP peers.
+
+### Example Configuration
+
+```ini /etc/asterisk/sip.conf
+[general]
+port=5060
+directmedia=no
+language=es
+context=public
+allowoverlap=no
+udpbindaddr=0.0.0.0
+transport=udp
+```
+
+## Reload SIP Configuration
+
+Apply the changes without restarting Asterisk:
+
+<Steps>
+  <Step title="Access Asterisk CLI">
+    ```bash
+    sudo asterisk -rvvvvvvc
+    ```
+  </Step>
+  
+  <Step title="Reload SIP">
+    ```
+    CLI> sip reload
+    ```
+    
+    You should see:
+    ```
+    Reloading SIP
+    ```
+  </Step>
+</Steps>
+
+## Per-User Language Configuration
+
+You can also set language on a per-user basis in `sip.conf`:
+
+```ini
+[javier]
+type=friend
+secret=12345678
+context=empleado
+host=dynamic
+canreinvite=no
+nat=force_report
+language=es
+
+[belen]
+type=friend
+secret=12345678
+context=empleado
+host=dynamic
+canreinvite=no
+nat=force_rport,comedia
+language=en  ; This user gets English prompts
+```
+
+## Available Sound Formats
+
+After conversion, each prompt exists in multiple formats:
+
+- **`.sln16`** - 16-bit signed linear (16kHz) - High quality
+- **`.gsm`** - GSM codec (8kHz) - Compressed
+- **`.alaw`** - A-law codec (8kHz) - European standard
+- **`.ulaw`** - μ-law codec (8kHz) - North American standard
+
+Asterisk automatically selects the best format based on the codec in use.
+
+## Verify Installation
+
+Check that Spanish sound files are present:
+
+```bash
+ls -la /var/lib/asterisk/sounds/es/
+```
+
+You should see multiple files with different extensions (.sln16, .gsm, .alaw, .ulaw).
+
+## Other Languages
+
+The same process works for other languages. Visit [asterisksounds.org](https://www.asterisksounds.org) to download sound packs for:
+
+- French (fr)
+- German (de)
+- Italian (it)
+- Portuguese (pt)
+- And many more
+
+Create a directory for each language under `/var/lib/asterisk/sounds/`.
+
+## Next Steps
+
+With language configuration complete, proceed to [testing your installation](/installation/testing) by creating users and making test calls.

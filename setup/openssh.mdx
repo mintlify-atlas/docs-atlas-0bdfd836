@@ -1,0 +1,137 @@
+---
+title: OpenSSH Installation
+description: Install and configure OpenSSH server for remote access
+---
+
+OpenSSH allows you to securely connect to your Asterisk server remotely, making administration and configuration much easier.
+
+## Installation and Configuration
+
+<Steps>
+  <Step title="Install OpenSSH server">
+    If OpenSSH wasn't installed with your operating system, install it using:
+    
+    ```bash
+    sudo apt-get install openssh-server
+    ```
+  </Step>
+
+  <Step title="Verify server IP address">
+    Confirm your server's IP address (this should be the static IP you configured):
+    
+    ```bash
+    ip address
+    ```
+  </Step>
+
+  <Step title="Configure SSH daemon">
+    Edit the SSH daemon configuration file to specify the port and listening address:
+    
+    ```bash
+    sudo nano /etc/ssh/sshd_config
+    ```
+    
+    Configure the following settings:
+    
+    ```bash
+    Port 22
+    #AddressFamily any
+    #ListenAddress 0.0.0.0
+    ListenAddress 192.168.1.180
+    ```
+    
+    <Info>
+      - `Port 22` - Default SSH port
+      - `ListenAddress` - Specify your server's static IP address
+    </Info>
+  </Step>
+
+  <Step title="Manage SSH service">
+    Use these commands to control the SSH service:
+    
+    **Start SSH service:**
+    ```bash
+    sudo /etc/init.d/ssh start
+    ```
+    
+    **Stop SSH service:**
+    ```bash
+    sudo /etc/init.d/ssh stop
+    ```
+    
+    **Restart SSH service:**
+    ```bash
+    sudo /etc/init.d/ssh restart
+    ```
+    
+    **Check SSH service status:**
+    ```bash
+    sudo /etc/init.d/ssh status
+    ```
+  </Step>
+</Steps>
+
+## Connecting with MobaXterm
+
+On your local machine, you can use [MobaXterm](https://mobaxterm.mobatek.net/) to connect to your Asterisk server.
+
+<Steps>
+  <Step title="Create new session">
+    Open MobaXterm and create a new SSH session.
+  </Step>
+
+  <Step title="Enter connection details">
+    Configure the session with:
+    - **Remote host:** Your server's static IP (e.g., 192.168.1.200)
+    - **Port:** 22
+    - **Username:** Your server username
+  </Step>
+
+  <Step title="Connect to server">
+    Click OK to establish the connection. You'll be prompted for your password.
+  </Step>
+
+  <Step title="Verify connection">
+    Once connected, verify the SSH connection is active:
+    
+    ```bash
+    ps ax | grep sshd
+    ```
+    
+    You should see the SSH daemon processes running.
+  </Step>
+</Steps>
+
+## Service Management Commands
+
+| Command | Description |
+|---------|-------------|
+| `sudo /etc/init.d/ssh start` | Start SSH service |
+| `sudo /etc/init.d/ssh stop` | Stop SSH service |
+| `sudo /etc/init.d/ssh restart` | Restart SSH service |
+| `sudo /etc/init.d/ssh status` | Check service status |
+
+## Troubleshooting
+
+<AccordionGroup>
+  <Accordion title="Cannot connect to server">
+    - Verify the server's IP address with `ip address`
+    - Check if SSH service is running with `sudo /etc/init.d/ssh status`
+    - Ensure firewall rules allow connections on port 22
+    - Verify the `ListenAddress` in `/etc/ssh/sshd_config` matches your server's IP
+  </Accordion>
+
+  <Accordion title="Connection refused">
+    - Restart the SSH service: `sudo /etc/init.d/ssh restart`
+    - Check that port 22 is not blocked by your network
+    - Verify SSH is listening on the correct interface
+  </Accordion>
+</AccordionGroup>
+
+## Next Steps
+
+With SSH configured, you can now proceed with installing Asterisk and its dependencies remotely.
+
+<Card title="Install Asterisk" icon="download" href="/installation/asterisk-installation">
+  Continue with Asterisk installation and dependencies
+</Card>

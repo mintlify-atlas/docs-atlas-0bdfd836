@@ -1,0 +1,632 @@
+---
+title: Troubleshooting Common Issues
+description: Solutions to common problems when setting up and configuring Asterisk PBX
+---
+
+## Connection Issues
+
+### Unable to connect to remote asterisk
+
+**Error Message**:
+```
+Unable to connect to remote asterisk (does /var/run/asterisk.ctl exist?)
+```
+
+**Description**:  
+This error appears when trying to access the Asterisk console with `asterisk -r` or `asterisk -rvvvvvvc`. It typically indicates permission problems with the Asterisk user.
+
+**Solution**:
+
+1. Fix permissions for Asterisk directories:
+
+```bash
+$ sudo chown -R asterisk: /var/{lib,log,run,spool}/asterisk /usr/lib/asterisk /etc/asterisk
+```
+
+```bash
+$ sudo chmod -R 750 /var/{lib,log,run,spool}/asterisk /usr/lib/asterisk /etc/asterisk
+```
+
+2. Restart the system:
+
+```bash
+$ sudo reboot
+```
+
+3. If the problem persists, try launching Asterisk manually:
+
+```bash
+$ sudo asterisk -&
+```
+
+4. Verify Asterisk is running:
+
+```bash
+$ ps aux | grep asterisk
+```
+
+**Alternative Check**:
+
+Verify the control socket exists:
+```bash
+$ ls -l /var/run/asterisk/asterisk.ctl
+```
+
+If it doesn't exist, Asterisk isn't running properly.
+
+**Related Issues**:
+- Service not starting on boot
+- Permission denied errors in logs
+- Socket file missing or corrupted
+
+---
+
+## Registration Issues
+
+### Softphone Won't Register
+
+**Symptoms**:
+- Shows "Offline" or "Registration Failed"
+- Red status indicator
+- "403 Forbidden" or "401 Unauthorized" errors
+
+**Common Causes and Solutions**:
+
+#### 1. Incorrect Credentials
+
+**Check**:
+- Username matches `[section]` name in `sip.conf`
+- Password matches `secret=` value
+- Case sensitivity matters
+
+**Verify in sip.conf**:
+```ini
+[javier]
+type=friend
+secret=310195  ; Must match exactly
+context=empleado
+host=dynamic
+```
+
+#### 2. Network Issues
+
+**Test connectivity**:
+```bash
+$ ping 192.168.1.180
+```
+
+**Check Asterisk is listening**:
+```bash
+$ sudo netstat -tuln | grep 5060
+```
+
+Should show:
+```
+tcp  0  0  0.0.0.0:5060  0.0.0.0:*  LISTEN
+udp  0  0  0.0.0.0:5060  0.0.0.0:*
+```
+
+#### 3. Firewall Blocking
+
+**Check firewall rules**:
+```bash
+$ sudo iptables -L -n | grep 5060
+```
+
+**Allow SIP ports**:
+```bash
+$ sudo ufw allow 5060/udp
+$ sudo ufw allow 5060/tcp
+$ sudo ufw allow 5061/tcp  # For TLS
+$ sudo ufw allow 10000:20000/udp  # RTP (audio)
+```
+
+#### 4. Asterisk Not Running
+
+**Check status**:
+```bash
+$ sudo /etc/init.d/asterisk status
+```
+
+**Start if needed**:
+```bash
+$ sudo /etc/init.d/asterisk start
+```
+
+#### 5. Wrong Context
+
+**Verify context exists** in `extensions.conf`:
+```ini
+[empleado]  ; This must match context= in sip.conf
+exten => 4000,1,Dial(SIP/javier)
+```
+
+**Check from CLI**:
+```
+CLI> dialplan show empleado
+```
+
+---
+
+## Audio Issues
+
+### No Audio During Calls
+
+**Symptoms**:
+- Call connects but complete silence
+- One-way audio (only one party hears)
+- Robotic or choppy audio
+
+**Solutions**:
+
+#### 1. Codec Mismatch
+
+**Check allowed codecs** in `sip.conf`:
+```ini
+[general]
+disallow=all
+allow=ulaw
+allow=alaw
+allow=gsm
+```
+
+**Verify negotiation** in Asterisk CLI during call:
+```
+CLI> core set verbose 5
+```
+
+Look for codec negotiation messages.
+
+#### 2. NAT Configuration
+
+**For users behind NAT**, configure in `sip.conf`:
+```ini
+[javier]
+nat=force_rport,comedia
+canreinvite=no
+```
+
+**In [general] section**:
+```ini
+[general]
+directmedia=no
+```
+
+#### 3. RTP Port Blocking
+
+**Configure RTP ports** in `rtp.conf`:
+```ini
+[general]
+rtpstart=10000
+rtpend=20000
+```
+
+**Open firewall**:
+```bash
+$ sudo ufw allow 10000:20000/udp
+```
+
+#### 4. Network Quality
+
+**Test packet loss**:
+```bash
+$ ping -c 100 192.168.1.180 | grep loss
+```
+
+**Check jitter and latency**:
+```
+CLI> rtp set debug on
+```
+
+---
+
+## Call Flow Issues
+
+### Call Connects Then Immediately Hangs Up
+
+**Symptoms**:
+- Ring, answer, immediate disconnect
+- "Everyone is busy/congested" message
+
+**Solutions**:
+
+#### 1. Check Dial Plan Syntax
+
+**Look for errors** in `extensions.conf`:
+```ini
+[empleado]
+exten => 4000,1,NoOp(Calling Javier)
+same => n,Dial(SIP/javier,15)  ; 15 second timeout
+same => n,VoiceMail(${EXTEN})
+same => n,Hangup()
+```
+
+**Test syntax**:
+```
+CLI> dialplan reload
+```
+
+Watch for error messages.
+
+#### 2. Verify Extension Exists
+
+**Check registration**:
+```
+CLI> sip show peers
+```
+
+Ensure both parties show as "OK".
+
+#### 3. Context Permissions
+
+**Ensure caller context** includes destination:
+```ini
+[empleado]
+exten => 4000,1,Dial(SIP/javier)
+exten => 4001,1,Dial(SIP/belen)
+```
+
+Caller must be in context that has access to callee's extension.
+
+#### 4. Check Console for Errors
+
+**Watch call flow**:
+```bash
+$ sudo asterisk -rvvvvvvc
+```
+
+Look for:
+- "No such extension"
+- "User/peer not found"
+- "Codec negotiation failed"
+
+---
+
+## Database Issues
+
+### ODBC Connection Failures
+
+**Symptoms**:
+- Database queries fail
+- "ODBC not configured" errors
+- Extension names not resolved
+
+**Solutions**:
+
+#### 1. Test ODBC Connection
+
+**Test from command line**:
+```bash
+$ echo "SELECT * FROM usuarios" | isql -v asterisk-connector asterisk asterisk
+```
+
+Should return query results.
+
+#### 2. Check Configuration
+
+**Verify `/etc/odbc.ini`**:
+```ini
+[asterisk-connector]
+Description = MySQL connection to asteriskdb
+Driver = MySQL ODBC 8.0
+Database = asteriskdb
+Server = localhost
+Port = 3306
+Socket = /var/run/mysqld/mysqld.sock
+```
+
+#### 3. Verify Database Permissions
+
+**Test login**:
+```bash
+$ mysql -u asterisk -p asteriskdb
+```
+
+**Check grants**:
+```sql
+SHOW GRANTS FOR 'asterisk'@'localhost';
+```
+
+#### 4. Reload Asterisk Modules
+
+```
+CLI> module reload res_odbc.so
+CLI> module reload func_odbc.so
+CLI> odbc show
+```
+
+Should show connection as "connected".
+
+---
+
+## TLS/Security Issues
+
+### TLS Connections Failing
+
+**Symptoms**:
+- "Certificate verification failed"
+- Can't connect with TLS transport
+- Softphone shows security error
+
+**Solutions**:
+
+#### 1. Verify Certificate Files Exist
+
+```bash
+$ ls -l /etc/asterisk/keys/
+```
+
+Should show:
+- `ca.crt` - Certificate authority
+- `asterisk.pem` - Server certificate
+- `clientname.pem` - Client certificates
+
+#### 2. Check Permissions
+
+```bash
+$ sudo chown asterisk:asterisk /etc/asterisk/keys/*
+$ sudo chmod 640 /etc/asterisk/keys/*.pem
+$ sudo chmod 644 /etc/asterisk/keys/*.crt
+```
+
+#### 3. Verify TLS Configuration
+
+**In `sip.conf`**:
+```ini
+[general]
+tlsenable=yes
+tlsbindaddr=0.0.0.0
+tlscertfile=/etc/asterisk/keys/asterisk.pem
+tlscafile=/etc/asterisk/keys/ca.crt
+tlscipher=ALL
+tlsclientmethod=tlsv1
+```
+
+#### 4. Test TLS Port
+
+```bash
+$ sudo netstat -tuln | grep 5061
+```
+
+```
+CLI> sip show tcp
+```
+
+---
+
+## Voicemail Issues
+
+### Can't Access Voicemail
+
+**Symptoms**:
+- "Invalid mailbox" message
+- Wrong PIN rejection
+- No voicemail greeting
+
+**Solutions**:
+
+#### 1. Check voicemail.conf
+
+```ini
+[default]
+4000 => 1234,Javier,javier@ejemplo.com
+4001 => 1234,Belen,belen@ejemplo.com
+```
+
+Format: `mailbox => pin,name,email`
+
+#### 2. Verify Dial Plan
+
+```ini
+exten => *4000,1,VoiceMailMain(4000)
+same => n,Hangup()
+```
+
+#### 3. Check Voicemail Directories
+
+```bash
+$ ls -l /var/spool/asterisk/voicemail/default/
+```
+
+Should show mailbox directories (4000, 4001, etc.)
+
+#### 4. Test Voicemail Recording
+
+**Check for saved messages**:
+```bash
+$ ls -l /var/spool/asterisk/voicemail/default/4001/INBOX/
+```
+
+**Verify audio formats**:
+- `.wav` - Original recording
+- `.gsm` - GSM encoded
+- `.wav49` - Compressed WAV
+
+---
+
+## DUNDi Issues
+
+### Peer Not Connecting
+
+**Symptoms**:
+- `dundi show peers` shows "UNREACHABLE"
+- Can't lookup remote extensions
+- Cross-PBX calls fail
+
+**Solutions**:
+
+#### 1. Verify Keys
+
+**Check keys are loaded**:
+```
+CLI> keys show
+```
+
+Should show:
+- Your private key
+- Peer's public key
+
+#### 2. Test Network Connectivity
+
+```bash
+$ ping 192.168.1.200  # Peer IP
+```
+
+**Check DUNDi port** (UDP 4520):
+```bash
+$ sudo ufw allow 4520/udp
+```
+
+#### 3. Verify MAC Address
+
+**Get MAC address**:
+```bash
+$ ip a | grep ether
+```
+
+**Must match in `dundi.conf`**:
+```ini
+[00:0C:29:52:7C:20]  ; Peer's MAC
+host = 192.168.1.200
+```
+
+#### 4. Test Lookup
+
+```
+CLI> dundi lookup 4000@priv bypass
+```
+
+Should return SIP information for extension 4000.
+
+#### 5. Check Logs
+
+```bash
+$ tail -f /var/log/asterisk/messages | grep -i dundi
+```
+
+---
+
+## Performance Issues
+
+### High CPU Usage
+
+**Check processes**:
+```bash
+$ top -u asterisk
+```
+
+**Common causes**:
+- Too many concurrent calls
+- Audio transcoding (codec conversion)
+- Database query loops
+- Verbose logging enabled
+
+**Solutions**:
+- Use matching codecs (no transcoding)
+- Reduce verbosity: `core set verbose 0`
+- Optimize database queries
+- Add more resources
+
+### Call Quality Issues
+
+**Symptoms**:
+- Choppy audio
+- Echo
+- Delays
+
+**Check RTP statistics**:
+```
+CLI> rtp set debug on
+```
+
+**Monitor during call**:
+```
+CLI> core show channels
+```
+
+**Solutions**:
+- Enable jitter buffer
+- Adjust codec priorities
+- Check network bandwidth
+- Reduce network congestion
+
+---
+
+## Configuration File Issues
+
+### Syntax Errors
+
+**Common mistakes**:
+
+1. **Missing `same => n`** in extensions.conf:
+```ini
+; Wrong:
+exten => 4000,1,NoOp()
+exten => 4000,2,Dial(SIP/javier)  ; Wrong!
+
+; Correct:
+exten => 4000,1,NoOp()
+same => n,Dial(SIP/javier)  ; Correct
+```
+
+2. **Indentation errors** (spaces vs tabs)
+
+3. **Missing semicolons** in comments
+
+**Test syntax**:
+```
+CLI> dialplan reload
+CLI> sip reload
+CLI> module reload res_odbc.so
+```
+
+Watch for warnings or errors.
+
+---
+
+## Getting More Help
+
+### Enable Debug Logging
+
+**Maximum verbosity**:
+```
+CLI> core set verbose 10
+CLI> core set debug 10
+CLI> sip set debug on
+```
+
+**For specific peer**:
+```
+CLI> sip set debug peer javier
+```
+
+### Check Log Files
+
+```bash
+$ tail -f /var/log/asterisk/messages
+$ tail -f /var/log/asterisk/full
+```
+
+### Useful CLI Commands
+
+```
+CLI> core show channels       # Active calls
+CLI> sip show peers           # SIP registrations
+CLI> sip show channels        # SIP channels
+CLI> core show uptime         # System info
+CLI> module show              # Loaded modules
+CLI> dialplan show            # All extensions
+```
+
+### Community Resources
+
+- [Asterisk Community Forums](https://community.asterisk.org)
+- [Asterisk Wiki](https://wiki.asterisk.org)
+- [VOIP-Info](https://www.voip-info.org)
+- [Stack Overflow - Asterisk Tag](https://stackoverflow.com/questions/tagged/asterisk)
+
+## Related Topics
+
+- [SIP Softphone Clients](/reference/softphones)
+- [Useful Links and Resources](/reference/useful-links)
+- [DUNDi Interconnection](/advanced/dundi-interconnection)

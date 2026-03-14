@@ -1,0 +1,385 @@
+---
+title: "sip.conf Reference"
+description: "Complete reference for Asterisk SIP channel configuration"
+---
+
+## Overview
+
+The `sip.conf` file configures the SIP (Session Initiation Protocol) channel driver in Asterisk. It defines SIP peers, users, and general SIP settings.
+
+## File Location
+
+```
+/etc/asterisk/sip.conf
+```
+
+## Configuration Structure
+
+The file consists of sections:
+- `[general]` - Global SIP settings
+- `[authentication]` - Authentication credentials
+- User/peer definitions - Individual SIP endpoints
+- Templates - Reusable configuration blocks
+
+## [general] Section
+
+### Network Settings
+
+<ParamField path="port" type="integer" default="5060">
+  UDP port to listen on for SIP connections
+</ParamField>
+
+<ParamField path="udpbindaddr" type="string" default="0.0.0.0">
+  IP address to bind UDP socket to. Use `0.0.0.0` to bind to all interfaces
+</ParamField>
+
+<ParamField path="tcpenable" type="boolean" default="no">
+  Enable TCP transport for SIP
+</ParamField>
+
+<ParamField path="tcpbindaddr" type="string" default="0.0.0.0">
+  IP address for TCP server to bind to
+</ParamField>
+
+<ParamField path="transport" type="string" default="udp">
+  Default transport protocol. Options: `udp`, `tcp`, `tls`
+</ParamField>
+
+### Media Settings
+
+<ParamField path="directmedia" type="boolean" default="yes">
+  Allow RTP media to flow directly between endpoints without going through Asterisk. Set to `no` to force media through the server
+</ParamField>
+
+### General Options
+
+<ParamField path="language" type="string" default="en">
+  Default language for prompts (e.g., `es`, `en`, `fr`)
+</ParamField>
+
+<ParamField path="context" type="string" default="default">
+  Default dialplan context for incoming calls
+</ParamField>
+
+<ParamField path="allowoverlap" type="boolean" default="yes">
+  Enable overlap dialing support
+</ParamField>
+
+<ParamField path="srvlookup" type="boolean" default="no">
+  Enable DNS SRV lookups on outbound calls
+</ParamField>
+
+### TLS/Security Settings
+
+<ParamField path="tlsenable" type="boolean" default="no">
+  Enable TLS transport
+</ParamField>
+
+<ParamField path="tlsbindaddr" type="string" default="0.0.0.0">
+  IP address to bind TLS socket to
+</ParamField>
+
+<ParamField path="tlscertfile" type="string">
+  Path to TLS certificate file (e.g., `/etc/asterisk/keys/asterisk.pem`)
+</ParamField>
+
+<ParamField path="tlscafile" type="string">
+  Path to Certificate Authority file
+</ParamField>
+
+<ParamField path="tlscipher" type="string" default="ALL">
+  Allowed TLS cipher suites
+</ParamField>
+
+<ParamField path="tlsclientmethod" type="string">
+  TLS version to use (e.g., `tlsv1`, `tlsv1_2`)
+</ParamField>
+
+### Messaging Settings
+
+<ParamField path="accept_outofcall_message" type="boolean" default="no">
+  Accept SIP MESSAGE requests outside of active calls
+</ParamField>
+
+<ParamField path="outofcall_message_context" type="string">
+  Dialplan context for processing out-of-call messages
+</ParamField>
+
+<ParamField path="auth_message_requests" type="boolean" default="yes">
+  Require authentication for MESSAGE requests
+</ParamField>
+
+<ParamField path="subscribecontext" type="string">
+  Context for presence subscriptions
+</ParamField>
+
+## User/Peer Definitions
+
+### Basic Syntax
+
+```ini
+[username]
+type=friend
+secret=password
+context=dialplan_context
+host=dynamic
+```
+
+### Common Options
+
+<ParamField path="type" type="string" required>
+  Endpoint type:
+  - `friend` - Both inbound and outbound calls
+  - `peer` - Outbound only
+  - `user` - Inbound only
+</ParamField>
+
+<ParamField path="secret" type="string" required>
+  Password for SIP authentication
+</ParamField>
+
+<ParamField path="context" type="string" required>
+  Dialplan context to use for calls from this endpoint
+</ParamField>
+
+<ParamField path="host" type="string" required>
+  IP address or hostname:
+  - `dynamic` - IP address changes (register with server)
+  - `static` - Fixed IP address
+  - Specific IP - e.g., `192.168.1.100`
+</ParamField>
+
+<ParamField path="canreinvite" type="boolean" default="yes">
+  Allow SIP reinvite for direct media. Alias for `directmedia`
+</ParamField>
+
+<ParamField path="nat" type="string">
+  NAT traversal settings:
+  - `force_rport` - Force rport parameter
+  - `comedia` - Symmetric RTP
+  - `force_rport,comedia` - Both settings
+</ParamField>
+
+### Call Groups
+
+<ParamField path="callgroup" type="string">
+  Call groups this peer belongs to (comma-separated numbers)
+</ParamField>
+
+<ParamField path="pickupgroup" type="string">
+  Groups from which this peer can pick up calls (comma-separated numbers)
+</ParamField>
+
+### Codec Settings
+
+<ParamField path="disallow" type="string">
+  Codecs to disable (use `all` to disable all codecs first)
+</ParamField>
+
+<ParamField path="allow" type="string">
+  Codecs to enable (e.g., `ulaw`, `alaw`, `gsm`, `g729`)
+</ParamField>
+
+<ParamField path="dtmfmode" type="string" default="rfc2833">
+  DTMF signaling method: `rfc2833`, `inband`, `info`
+</ParamField>
+
+### Transport Options
+
+<ParamField path="transport" type="string">
+  Transport protocol for this peer: `udp`, `tcp`, `tls`
+</ParamField>
+
+## Templates
+
+Templates allow you to define reusable configuration blocks:
+
+```ini
+[basic-options](!)                ; Template definition
+    dtmfmode=rfc2833
+    context=from-office
+    type=friend
+
+[natted-phone](!,basic-options)   ; Inherit from template
+    directmedia=no
+    host=dynamic
+```
+
+<Note>
+  Templates are defined with `(!)` and inherited with `(!,template_name)`
+</Note>
+
+## Example Configurations
+
+### Basic Configuration
+
+```ini
+[general]
+port=5060
+directmedia=no
+language=es
+context=public
+allowoverlap=no
+udpbindaddr=0.0.0.0
+transport=udp
+srvlookup=yes
+
+[authentication]
+
+[javier]
+type=friend
+secret=12345678
+context=empleado
+host=dynamic
+canreinvite=no
+nat=force_rport,comedia
+
+[belen]
+type=friend
+secret=12345678
+context=empleado
+host=dynamic
+canreinvite=no
+nat=force_rport,comedia
+```
+
+### With Call Groups and Pickup
+
+```ini
+[javier]
+type=friend
+secret=310195
+context=empleado
+host=dynamic
+canreinvite=no
+nat=force_rport,comedia
+callgroup=2
+pickupgroup=2
+
+[director]
+type=friend
+secret=130261
+context=direccion
+host=dynamic
+canreinvite=no
+nat=force_rport,comedia
+callgroup=1
+pickupgroup=1,2          ; Can pick up from groups 1 and 2
+```
+
+### With TLS Security
+
+```ini
+[general]
+port=5060
+tlsenable=yes
+tlsbindaddr=0.0.0.0
+tlscertfile=/etc/asterisk/keys/asterisk.pem
+tlscafile=/etc/asterisk/keys/ca.crt
+tlscipher=ALL
+tlsclientmethod=tlsv1
+
+[javier]
+type=friend
+secret=310195
+context=empleado
+host=dynamic
+canreinvite=no
+nat=force_rport,comedia
+transport=tls              ; Use TLS transport
+```
+
+### With Messaging Support
+
+```ini
+[general]
+port=5060
+directmedia=no
+language=es
+context=public
+accept_outofcall_message=yes
+outofcall_message_context=mensajes
+auth_message_requests=yes
+subscribecontext=suscribir
+```
+
+### Using Templates
+
+```ini
+[basic-options](!)                ; Template
+    dtmfmode=rfc2833
+    context=from-office
+    type=friend
+
+[my-codecs](!)                    ; Codec template
+    disallow=all
+    allow=ilbc
+    allow=g729
+    allow=gsm
+    allow=ulaw
+
+[ulaw-phone](!)                   ; ulaw-only template
+    disallow=all
+    allow=ulaw
+
+[phone1](!,basic-options,my-codecs)  ; Inherit multiple templates
+    host=dynamic
+    secret=password123
+```
+
+## Common Patterns
+
+### Dynamic IP Phones (NAT)
+
+For phones behind NAT with dynamic IPs:
+
+```ini
+[user]
+type=friend
+host=dynamic
+nat=force_rport,comedia
+```
+
+### Fixed IP Phones
+
+For phones with static IP addresses:
+
+```ini
+[user]
+type=friend
+host=192.168.1.100
+```
+
+### Trunk Configuration
+
+For SIP trunks to providers:
+
+```ini
+[provider-trunk]
+type=peer
+host=sip.provider.com
+fromdomain=sip.provider.com
+username=myaccount
+secret=mypassword
+context=from-provider
+```
+
+## Applying Changes
+
+After modifying `sip.conf`, reload the SIP module:
+
+```bash
+asterisk -rx "sip reload"
+```
+
+Or reload from the Asterisk CLI:
+
+```
+asterisk> sip reload
+```
+
+## See Also
+
+- [extensions.conf](/config/extensions-conf) - Dialplan configuration
+- [voicemail.conf](/config/voicemail-conf) - Voicemail settings
+- [features.conf](/config/features-conf) - Call features

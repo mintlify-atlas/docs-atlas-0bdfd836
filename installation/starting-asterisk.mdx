@@ -1,0 +1,209 @@
+---
+title: 'Starting Asterisk Service'
+description: 'Learn how to start, stop, and manage the Asterisk service'
+---
+
+## Starting Asterisk
+
+Start the Asterisk service:
+
+```bash
+sudo /etc/init.d/asterisk start
+```
+
+This initializes the Asterisk PBX and loads all configured modules.
+
+## Accessing the CLI
+
+The Asterisk Command Line Interface (CLI) is the primary tool for managing and monitoring Asterisk.
+
+### Verbose Mode
+
+Connect to the CLI with verbose output:
+
+```bash
+sudo asterisk -rvvvvvvc
+```
+
+The flags mean:
+- **`-r`** - Connect to running Asterisk instance
+- **`-vvvvvv`** - Verbose level 6 (maximum verbosity)
+- **`-c`** - Console mode
+
+### Standard Mode
+
+Connect with normal verbosity:
+
+```bash
+sudo asterisk -r
+```
+
+### CLI Prompt
+
+Once connected, you'll see the Asterisk CLI prompt:
+
+```
+Asterisk 15.7.1, Copyright (C) 1999 - 2018, Digium, Inc. and others.
+*CLI>
+```
+
+## Enable Service on Boot
+
+Configure Asterisk to start automatically when the system boots:
+
+```bash
+sudo systemctl enable asterisk
+```
+
+This creates a systemd service link that starts Asterisk during system initialization.
+
+## Service Management Commands
+
+Asterisk provides several service management commands:
+
+<CodeGroup>
+```bash Start
+sudo /etc/init.d/asterisk start
+```
+
+```bash Stop
+sudo /etc/init.d/asterisk stop
+```
+
+```bash Restart
+sudo /etc/init.d/asterisk restart
+```
+
+```bash Reload
+sudo /etc/init.d/asterisk reload
+```
+
+```bash Force Reload
+sudo /etc/init.d/asterisk force-reload
+```
+
+```bash Status
+sudo /etc/init.d/asterisk status
+```
+</CodeGroup>
+
+### Command Descriptions
+
+- **start** - Start the Asterisk service
+- **stop** - Stop the Asterisk service gracefully
+- **restart** - Stop and start the service (full restart)
+- **reload** - Reload configuration without restarting
+- **force-reload** - Force configuration reload
+- **status** - Check if Asterisk is running
+
+## Useful CLI Commands
+
+Once inside the Asterisk CLI, try these commands:
+
+### Show System Status
+
+```
+CLI> core show version
+```
+
+Displays Asterisk version information.
+
+### Reload Specific Modules
+
+```
+CLI> sip reload
+```
+
+Reloads SIP configuration without restarting Asterisk.
+
+```
+CLI> dialplan reload
+```
+
+Reloads the dialplan (extensions.conf).
+
+### Show Active Channels
+
+```
+CLI> core show channels
+```
+
+Displays all active calls and channels.
+
+### Show Registered SIP Peers
+
+```
+CLI> sip show peers
+```
+
+Lists all registered SIP endpoints.
+
+### Exit the CLI
+
+```
+CLI> exit
+```
+
+or press `Ctrl+C` to disconnect from the CLI (Asterisk continues running).
+
+## Stopping Asterisk
+
+To completely stop Asterisk:
+
+### From the CLI
+
+```
+CLI> core stop now
+```
+
+This immediately stops Asterisk.
+
+```
+CLI> core stop gracefully
+```
+
+This waits for active calls to complete before stopping.
+
+### From the Shell
+
+```bash
+sudo /etc/init.d/asterisk stop
+```
+
+## Troubleshooting
+
+### Check if Asterisk is Running
+
+```bash
+sudo /etc/init.d/asterisk status
+```
+
+or
+
+```bash
+ps aux | grep asterisk
+```
+
+### View Asterisk Logs
+
+```bash
+sudo tail -f /var/log/asterisk/messages
+```
+
+This displays real-time log output.
+
+### Cannot Connect to CLI
+
+If you get "Unable to connect to remote asterisk":
+
+1. Check if Asterisk is running: `sudo /etc/init.d/asterisk status`
+2. Start Asterisk if stopped: `sudo /etc/init.d/asterisk start`
+3. Check file permissions for `/var/run/asterisk/`
+
+<Warning>
+  Always use `reload` instead of `restart` when possible to avoid dropping active calls.
+</Warning>
+
+## Next Steps
+
+With Asterisk running, proceed to [configuring Spanish language support](/installation/language-configuration) to enable localized prompts.

@@ -1,0 +1,288 @@
+---
+title: Call Queues and Distribution
+description: Manage call queues for contact centers and call distribution
+---
+
+Implement call queues to handle multiple incoming calls efficiently, distributing them among available agents with customizable strategies.
+
+## Overview
+
+Call queues allow callers to wait for the next available agent when all agents are busy. This is essential for contact centers, support departments, and any scenario where call volume exceeds available operators.
+
+## Queue Components
+
+### Static Agents
+
+Agents are predefined extensions assigned to specific queues. In this configuration:
+- Agents are always part of the queue
+- No login/logout required
+- Extensions are configured in `queues.conf`
+
+### Dynamic Agents
+
+Agents can log in and out of queues as needed (not covered in this basic setup).
+
+## Configuration Files
+
+### Music on Hold
+
+First, configure custom music for callers waiting in queue:
+
+```bash
+sudo vim /etc/asterisk/musiconhold.conf
+```
+
+Create a custom context:
+
+```ini
+[recepcion]
+mode=files
+directory=/var/lib/asterisk/sounds/es/mimusica/
+```
+
+Reload and verify:
+
+```
+CLI> moh reload
+CLI> moh show classes
+```
+
+### Queue Configuration
+
+Edit the queues configuration:
+
+```bash
+sudo vim /etc/asterisk/queues.conf
+```
+
+Add the general section and queue definition:
+
+```ini
+[general]
+persistentmembers = yes
+monitor-type = MixMonitor
+
+[recepcion]
+strategy = leastrecent
+timeout = 30
+member => SIP/javier
+member => SIP/belen
+```
+
+**Configuration options:**
+
+- `persistentmembers`: Maintain queue membership across Asterisk restarts
+- `monitor-type`: Recording method for calls
+- `strategy`: Call distribution strategy (see below)
+- `timeout`: Maximum ring time in seconds per agent
+- `member`: Static queue members
+
+Reload and verify:
+
+```
+CLI> queue reload all
+CLI> queue show recepcion
+```
+
+### Dialplan Integration
+
+Edit the extensions configuration:
+
+```bash
+sudo vim /etc/asterisk/extensions.conf
+```
+
+Under the `[empleado]` context, add a queue extension:
+
+```ini
+;-----recepcion
+exten => 4444,1,NoOp(Recepcion)
+same => n,Set(CHANNEL(musicclass)=recepcion)
+same => n,Answer()
+same => n,Queue(recepcion,,,,120)
+same => n,Hangup()
+```
+
+**Queue() application parameters:**
+- First parameter: Queue name (`recepcion`)
+- Fifth parameter: Maximum wait time in seconds (120)
+
+Reload the dialplan:
+
+```
+CLI> dialplan reload
+```
+
+## Distribution Strategies
+
+The `strategy` parameter determines how calls are distributed:
+
+### ringall
+Ring all available agents simultaneously (default)
+
+```ini
+strategy = ringall
+```
+
+### leastrecent
+Ring the agent who least recently completed a call
+
+```ini
+strategy = leastrecent
+```
+
+### fewestcalls
+Ring the agent with fewest completed calls
+
+```ini
+strategy = fewestcalls
+```
+
+### random
+Ring a random agent
+
+```ini
+strategy = random
+```
+
+### rrmemory
+Round-robin with memory (remembers where it left off)
+
+```ini
+strategy = rrmemory
+```
+
+### linear
+Ring agents in order specified
+
+```ini
+strategy = linear
+```
+
+### wrandom
+Random with priority weights
+
+```ini
+strategy = wrandom
+```
+
+## Queue Management Commands
+
+### View Queue Status
+
+```
+CLI> queue show
+CLI> queue show recepcion
+```
+
+Displays:
+- Queue members
+- Calls in queue
+- Completed calls
+- Abandoned calls
+- Average hold time
+
+### Add Member Dynamically
+
+```
+CLI> queue add member SIP/maria to recepcion
+```
+
+### Remove Member
+
+```
+CLI> queue remove member SIP/javier from recepcion
+```
+
+### Pause/Unpause Member
+
+```
+CLI> queue pause member SIP/javier queue recepcion reason Break
+CLI> queue unpause member SIP/javier queue recepcion
+```
+
+## Advanced Queue Options
+
+<CodeGroup>
+```ini Basic Queue
+[support]
+strategy = ringall
+timeout = 20
+member => SIP/agent1
+member => SIP/agent2
+```
+
+```ini Advanced Queue
+[sales]
+strategy = leastrecent
+timeout = 30
+retry = 5
+wrapuptime = 15
+maxlen = 20
+announce-frequency = 30
+announce-holdtime = yes
+periodic-announce = queue-periodic-announce
+member => SIP/sales1,1
+member => SIP/sales2,2
+```
+</CodeGroup>
+
+**Additional options:**
+
+- `retry`: Seconds to wait before trying all agents again
+- `wrapuptime`: Seconds after call completion before next call
+- `maxlen`: Maximum callers allowed in queue (0 = unlimited)
+- `announce-frequency`: Seconds between position announcements
+- `announce-holdtime`: Announce estimated hold time
+- `periodic-announce`: Sound file to play periodically
+- `member => SIP/agent,penalty`: Penalty value (lower = higher priority)
+
+## Queue Priorities
+
+Assign penalties to prioritize certain agents:
+
+```ini
+[support]
+strategy = linear
+member => SIP/senior_agent,0
+member => SIP/junior_agent,1
+```
+
+Agents with lower penalties are tried first.
+
+## Monitoring Queues
+
+### Queue Statistics
+
+```
+CLI> queue show
+```
+
+Shows summary of all queues.
+
+### Queue Logs
+
+Queue events are logged to:
+
+```
+/var/log/asterisk/queue_log
+```
+
+View recent queue activity:
+
+```bash
+tail -f /var/log/asterisk/queue_log
+```
+
+## Testing
+
+Call extension **4444** from multiple phones:
+
+1. First caller connects to an available agent
+2. Second caller enters the queue and hears music on hold
+3. When the first call ends, second caller is routed to the next available agent
+4. Observe queue behavior in CLI with `queue show recepcion`
+
+<Note>
+For production environments, consider implementing queue announcements, estimated hold times, and callback options to improve caller experience.
+</Note>

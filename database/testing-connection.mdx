@@ -1,0 +1,380 @@
+---
+title: Testing Database Integration
+description: Verify Asterisk's connection to MariaDB and test custom ODBC functions
+---
+
+After configuring the database integration, it's essential to verify everything works correctly. This guide covers testing the ODBC connection and custom functions.
+
+## Verifying ODBC Connection from Asterisk CLI
+
+The Asterisk CLI provides commands to check ODBC connection status.
+
+### Check ODBC Status
+
+Access the Asterisk CLI:
+
+```bash
+sudo asterisk -rvvvvvvc
+```
+
+View ODBC connections:
+
+```
+CLI> odbc show
+```
+
+**Expected output:**
+```
+ODBC DSN Settings
+-----------------
+  Name:   asterisk
+  DSN:    asterisk-connector
+    Number of active connections: 1 (out of 1)
+    Pooled: No
+```
+
+The connection should show as active and connected.
+
+### Verify Loaded Modules
+
+Confirm ODBC modules are loaded:
+
+```
+CLI> module show like odbc
+```
+
+**Expected modules:**
+- `res_odbc.so` - ODBC resource module
+- `func_odbc.so` - ODBC functions
+- `cdr_odbc.so` - Call detail recording (if configured)
+
+## Testing Custom ODBC Functions
+
+Custom functions defined in `func_odbc.conf` can be tested from the CLI.
+
+### View Available Functions
+
+List ODBC functions:
+
+```
+CLI> odbc show functions
+```
+
+You should see your custom functions (e.g., `info`).
+
+### Test Function Execution
+
+Test a function directly from the CLI:
+
+```
+CLI> dialplan eval ${ODBC_info(javier)}
+```
+
+**Expected output:**
+```
+Result: javier con extension 4000
+```
+
+This confirms:
+- ODBC connection is working
+- SQL query executes successfully
+- Data retrieval from MariaDB works
+
+<Warning>
+If you receive an error:
+- Verify the function exists in `func_odbc.conf`
+- Check that `func_odbc.so` is loaded
+- Ensure the table and data exist in MariaDB
+- Reload the module: `module reload func_odbc.so`
+</Warning>
+
+## Testing Database Queries from Dialplan
+
+Create test extensions to verify database integration in real call scenarios.
+
+### Simple Query Test
+
+Add a test extension to `extensions.conf`:
+
+```bash
+sudo vim /etc/asterisk/extensions.conf
+```
+
+```ini
+[empleado]
+; Database test extension
+exten => 9999,1,NoOp(Testing database connection)
+same => n,Set(RESULT=${ODBC_info(javier)})
+same => n,NoOp(Query result: ${RESULT})
+same => n,GotoIf($["${RESULT}" = ""]?fail:success)
+same => n(success),Playback(beep)
+same => n,Hangup()
+same => n(fail),Playback(beeperr)
+same => n,Hangup()
+```
+
+Reload the dialplan:
+
+```
+CLI> dialplan reload
+```
+
+From a SIP phone, dial extension 9999. Watch the Asterisk CLI for output:
+
+```
+-- Executing [9999@empleado:1] NoOp("SIP/javier-00000001", "Testing database connection")
+-- Executing [9999@empleado:2] Set("SIP/javier-00000001", "RESULT=javier con extension 4000")
+-- Executing [9999@empleado:3] NoOp("SIP/javier-00000001", "Query result: javier con extension 4000")
+-- Executing [9999@empleado:4] GotoIf("SIP/javier-00000001", "0?fail:success")
+-- Executing [9999@empleado:5] Playback("SIP/javier-00000001", "beep")
+```
+
+### Dynamic Caller Information
+
+Test database lookup based on caller ID:
+
+```ini
+exten => 100,1,NoOp(Centralita de distribucion de llamadas)
+same => n,NoOp(Esta llamando ${ODBC_info(${CALLERID(number)})})
+same => n,Festival(Va a escuchar un fragmento de la primavera de Antonio Vivaldi)
+same => n,Playback(silence/1)
+same => n,Playback(mimusica/primavera)
+same => n,Hangup()
+```
+
+**What happens:**
+1. Caller dials extension 100
+2. `${CALLERID(number)}` retrieves caller's extension (e.g., "javier")
+3. `${ODBC_info()}` queries database for caller info
+4. Result displays in CLI: "Esta llamando javier con extension 4000"
+
+Reload and test:
+
+```
+CLI> dialplan reload
+```
+
+Dial 100 from extension 4000 (javier) and observe the CLI output.
+
+## Example Database Queries from Dialplan
+
+Here are practical examples of using database queries in call flows.
+
+### User Validation
+
+Verify a user exists before routing the call:
+
+```ini
+[func_odbc.conf]
+[userexists]
+dsn=asterisk
+readsql=SELECT COUNT(*) FROM usuarios WHERE extension='${SQL_ESC(${ARG1})}'
+```
+
+```ini
+[extensions.conf]
+exten => _4XXX,1,Set(EXISTS=${ODBC_userexists(${EXTEN})})
+same => n,GotoIf($[${EXISTS} > 0]?valid:invalid)
+same => n(valid),Dial(SIP/user_${EXTEN})
+same => n,Hangup()
+same => n(invalid),Playback(invalid)
+same => n,Hangup()
+```
+
+### Call Logging
+
+Log all calls to the database:
+
+```sql
+-- In MariaDB, create the table:
+CREATE TABLE call_log (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  caller VARCHAR(15),
+  callee VARCHAR(15),
+  call_time DATETIME,
+  duration INT
+);
+```
+
+```ini
+[func_odbc.conf]
+[logcall]
+dsn=asterisk
+writesql=INSERT INTO call_log (caller, callee, call_time) VALUES ('${SQL_ESC(${ARG1})}', '${SQL_ESC(${ARG2})}', NOW())
+```
+
+```ini
+[extensions.conf]
+exten => 4000,1,NoOp(Calling Javier)
+same => n,Set(LOGRESULT=${ODBC_logcall(${CALLERID(number)},4000)})
+same => n,Dial(SIP/javier,15)
+same => n,Hangup()
+```
+
+### Retrieve User Email
+
+First, modify the database table to include email:
+
+```sql
+ALTER TABLE usuarios ADD COLUMN email VARCHAR(50);
+UPDATE usuarios SET email='javier@ejemplo.com' WHERE nombre='javier';
+UPDATE usuarios SET email='belen@ejemplo.com' WHERE nombre='belen';
+```
+
+Create the function:
+
+```ini
+[func_odbc.conf]
+[getemail]
+dsn=asterisk
+readsql=SELECT email FROM usuarios WHERE extension='${SQL_ESC(${ARG1})}'
+```
+
+Use in dialplan:
+
+```ini
+exten => 8000,1,Set(EMAIL=${ODBC_getemail(4000)})
+same => n,NoOp(Javier's email: ${EMAIL})
+same => n,Hangup()
+```
+
+### On-Call Status Routing
+
+Route calls based on user availability in the database:
+
+```sql
+-- Create status table
+CREATE TABLE user_status (
+  extension INT PRIMARY KEY,
+  status ENUM('available', 'busy', 'offline') DEFAULT 'offline',
+  updated DATETIME
+);
+
+INSERT INTO user_status VALUES (4000, 'available', NOW());
+INSERT INTO user_status VALUES (4001, 'busy', NOW());
+```
+
+```ini
+[func_odbc.conf]
+[getstatus]
+dsn=asterisk
+readsql=SELECT status FROM user_status WHERE extension='${SQL_ESC(${ARG1})}'
+```
+
+```ini
+[extensions.conf]
+exten => _4XXX,1,Set(STATUS=${ODBC_getstatus(${EXTEN})})
+same => n,NoOp(User status: ${STATUS})
+same => n,GotoIf($["${STATUS}" = "available"]?call)
+same => n,GotoIf($["${STATUS}" = "busy"]?voicemail)
+same => n,Playback(user-offline)
+same => n,Hangup()
+same => n(call),Dial(SIP/user_${EXTEN},30)
+same => n(voicemail),VoiceMail(${EXTEN})
+same => n,Hangup()
+```
+
+## Troubleshooting Connection Issues
+
+### Connection Shows as Disconnected
+
+**Check MariaDB status:**
+```bash
+sudo systemctl status mysql
+```
+
+**Verify ODBC configuration:**
+```bash
+isql -v asterisk-connector asterisk asterisk
+```
+
+**Check Asterisk logs:**
+```bash
+tail -f /var/log/asterisk/messages
+```
+
+### Function Returns Empty Result
+
+**Test query directly in MariaDB:**
+```sql
+MariaDB> SELECT CONCAT(nombre,' con extension ', extension) FROM usuarios WHERE nombre='javier';
+```
+
+**Check function syntax:**
+```bash
+sudo vim /etc/asterisk/func_odbc.conf
+```
+
+**Reload function module:**
+```
+CLI> module reload func_odbc.so
+CLI> odbc show functions
+```
+
+### SQL Syntax Errors
+
+Enable verbose logging to see SQL errors:
+
+```bash
+sudo vim /etc/asterisk/logger.conf
+```
+
+```ini
+[logfiles]
+messages => notice,warning,error,verbose(3)
+```
+
+Reload logger:
+
+```
+CLI> logger reload
+```
+
+Watch the log while testing:
+
+```bash
+tail -f /var/log/asterisk/messages | grep -i odbc
+```
+
+## Performance Testing
+
+Test query performance to ensure responsive call routing.
+
+### Measure Query Time
+
+In MariaDB, enable profiling:
+
+```sql
+MariaDB> SET profiling = 1;
+MariaDB> SELECT CONCAT(nombre,' con extension ', extension) FROM usuarios WHERE nombre='javier';
+MariaDB> SHOW PROFILES;
+```
+
+**Optimize slow queries:**
+- Add indexes on frequently queried columns
+- Use EXPLAIN to analyze query execution
+- Simplify complex queries
+
+### Connection Pool Testing
+
+Test with multiple concurrent calls to verify connection stability:
+
+```bash
+# Generate test calls (requires sipp or similar tool)
+sipp -sn uac -s 9999 -r 10 -m 100 127.0.0.1
+```
+
+Monitor connection status:
+
+```
+CLI> odbc show
+```
+
+## Next Steps
+
+With database integration tested and working:
+- Implement Call Detail Records (CDR) to database
+- Create dynamic IVR menus based on database content
+- Build user self-service portals for voicemail, call forwarding
+- Integrate with external applications via database triggers
+- Set up database replication for high availability

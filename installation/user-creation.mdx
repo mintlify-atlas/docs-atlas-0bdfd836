@@ -1,0 +1,148 @@
+---
+title: 'Creating Asterisk User'
+description: 'Configure a dedicated system user for running Asterisk securely'
+---
+
+## Why Create a Dedicated User?
+
+By default, Asterisk runs as the root user, which poses security risks. Creating a dedicated `asterisk` user follows the principle of least privilege, limiting potential damage if the service is compromised.
+
+## Create the Asterisk User
+
+Create a system user named `asterisk`:
+
+```bash
+sudo adduser --system --group --home /var/lib/asterisk --no-create-home --gecos "Asterisk PBX" asterisk
+```
+
+This command:
+- Creates a **system user** (not a regular login user)
+- Creates a corresponding **group** named `asterisk`
+- Sets the home directory to `/var/lib/asterisk`
+- Adds the description "Asterisk PBX" to the user account
+
+## Configure Asterisk Defaults
+
+Edit the Asterisk defaults file:
+
+```bash
+sudo vim /etc/default/asterisk
+```
+
+Uncomment the following lines:
+
+```ini
+AST_USER="asterisk"
+AST_GROUP="asterisk"
+```
+
+These settings tell Asterisk to run as the `asterisk` user and group.
+
+<Warning>
+  Make sure to remove the `#` comment character at the beginning of these lines.
+</Warning>
+
+## Add User to Required Groups
+
+Add the `asterisk` user to the `dialout` and `audio` groups:
+
+```bash
+sudo usermod -a -G dialout,audio asterisk
+```
+
+These groups provide:
+- **dialout** - Access to modem and serial port devices
+- **audio** - Access to audio hardware
+
+## Set File Ownership and Permissions
+
+<Steps>
+  <Step title="Change ownership">
+    Transfer ownership of all Asterisk directories to the `asterisk` user:
+    
+    ```bash
+    sudo chown -R asterisk: /var/{lib,log,run,spool}/asterisk /usr/lib/asterisk /etc/asterisk
+    ```
+    
+    This command changes ownership for:
+    - `/var/lib/asterisk` - Runtime data
+    - `/var/log/asterisk` - Log files
+    - `/var/run/asterisk` - Process ID files
+    - `/var/spool/asterisk` - Voicemail and recordings
+    - `/usr/lib/asterisk` - Asterisk modules
+    - `/etc/asterisk` - Configuration files
+  </Step>
+  
+  <Step title="Set permissions">
+    Set appropriate file permissions:
+    
+    ```bash
+    sudo chmod -R 750 /var/{lib,log,run,spool}/asterisk /usr/lib/asterisk /etc/asterisk
+    ```
+    
+    Permissions `750` mean:
+    - Owner (asterisk): read, write, execute
+    - Group (asterisk): read, execute
+    - Others: no access
+  </Step>
+</Steps>
+
+## Verify User Configuration
+
+Verify the `asterisk` user was created:
+
+```bash
+id asterisk
+```
+
+You should see output showing the user ID, group memberships, and groups.
+
+## File Backup Best Practice
+
+Before modifying configuration files, create backups:
+
+```bash
+cd /etc/asterisk
+sudo cp fichero.conf fichero.conf.bck
+```
+
+Replace `fichero` with the actual filename (e.g., `sip.conf`, `extensions.conf`).
+
+## Cleaning Configuration Files
+
+Asterisk sample configuration files contain extensive comments. To remove comments and blank lines for easier editing:
+
+<Steps>
+  <Step title="Open the file in vim">
+    ```bash
+    sudo vim /etc/asterisk/fichero.conf
+    ```
+  </Step>
+  
+  <Step title="Remove comment lines">
+    In vim command mode, type:
+    ```
+    :g/^\s*;/d
+    ```
+  </Step>
+  
+  <Step title="Remove blank lines">
+    ```
+    :g/^$/d
+    ```
+  </Step>
+  
+  <Step title="Save the file">
+    ```
+    :wq
+    ```
+  </Step>
+</Steps>
+
+<Warning>
+  Only clean configuration files after making a backup. These commands permanently remove comments that may contain useful information.
+</Warning>
+
+## Next Steps
+
+With the user configured, proceed to [starting Asterisk](/installation/starting-asterisk) and accessing the CLI.
