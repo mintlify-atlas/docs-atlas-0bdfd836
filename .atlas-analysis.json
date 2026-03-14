@@ -1,0 +1,124 @@
+{
+  "projectType": "general",
+  "projectName": "Asterisk Tutorial",
+  "projectDescription": "Comprehensive Spanish-language guide for installing and configuring Asterisk PBX on Debian",
+  "theme": "linden",
+  "primaryColor": "#ee7924",
+  "lightColor": "#8e7a69",
+  "darkColor": "#dcd5cc",
+  "navigation": {
+    "tabs": [
+      {
+        "tab": "Documentation",
+        "groups": [
+          {
+            "group": "Get Started",
+            "pages": [
+              "introduction",
+              "technical-specs"
+            ]
+          },
+          {
+            "group": "Setup",
+            "pages": [
+              "setup/ssh-connection",
+              "setup/static-ip",
+              "setup/openssh"
+            ]
+          },
+          {
+            "group": "Installation",
+            "pages": [
+              "installation/asterisk-installation",
+              "installation/dependencies",
+              "installation/user-creation",
+              "installation/starting-asterisk",
+              "installation/language-configuration",
+              "installation/testing"
+            ]
+          },
+          {
+            "group": "PBX Features",
+            "pages": [
+              "features/voicemail",
+              "features/call-transfer",
+              "features/sip-messaging",
+              "features/group-calls",
+              "features/call-pickup",
+              "features/text-to-speech",
+              "features/call-security",
+              "features/external-calls",
+              "features/business-hours",
+              "features/logging",
+              "features/queue-distribution"
+            ]
+          },
+          {
+            "group": "Database Integration",
+            "pages": [
+              "database/mariadb-installation",
+              "database/odbc-connector",
+              "database/asterisk-connection",
+              "database/testing-connection"
+            ]
+          },
+          {
+            "group": "Advanced",
+            "pages": [
+              "advanced/dundi-interconnection",
+              "advanced/call-center-example"
+            ]
+          },
+          {
+            "group": "Reference",
+            "pages": [
+              "reference/softphones",
+              "reference/troubleshooting",
+              "reference/useful-links"
+            ]
+          }
+        ]
+      },
+      {
+        "tab": "Configuration",
+        "groups": [
+          {
+            "group": "Configuration Files",
+            "pages": [
+              "config/sip-conf",
+              "config/extensions-conf",
+              "config/voicemail-conf",
+              "config/features-conf",
+              "config/logger-conf"
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  "keyFeatures": [
+    "Voicemail system with Spanish language support",
+    "Call transfer and redirection",
+    "SIP messaging center",
+    "Group calls and call distribution",
+    "Call pickup functionality",
+    "Text-to-speech with Festival",
+    "TLS call encryption",
+    "MariaDB integration",
+    "DUNDi PBX interconnection",
+    "Call center implementation",
+    "Business hours management",
+    "Call logging and monitoring"
+  ],
+  "publicApiSurface": [
+    "SIP/javier extension (4000)",
+    "SIP/belen extension (4001)",
+    "Voicemail access (*4000, *4001)",
+    "Message center context",
+    "Group call extension (4040)",
+    "Call pickup (*8xxx)",
+    "External call simulation (995554XXX)",
+    "Call center queues",
+    "DUNDi e164 lookup"
+  ]
+}
